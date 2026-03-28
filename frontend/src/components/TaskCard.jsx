@@ -28,7 +28,7 @@ export default function TaskCard({ task, onTaskUpdate }) {
 
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed';
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
 
   return (
     <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${priorityColors[task.priority]} p-4 card-hover animate-fadeIn`}>
