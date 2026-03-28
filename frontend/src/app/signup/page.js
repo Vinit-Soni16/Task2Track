@@ -51,7 +51,7 @@ export default function SignupPage() {
          {/* Logo Image */}
 <div className="w-full aspect-4/3 bg-linear-to-br from-slate-600/30 via-slate-500/20 to-slate-600/30 rounded-3xl mb-8 flex items-center justify-center overflow-hidden shadow-lg backdrop-blur-sm relative">
   <img 
-    src="/images/Task2Track_logo.WebP" 
+    src="/Images/Task2Track_logo.WebP" 
     alt="Task2Track Logo" 
     className="w-full h-full object-cover  "
   />
