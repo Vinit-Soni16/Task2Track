@@ -10,7 +10,8 @@ const transporter = nodemailer.createTransport({
   },
   tls: {
     rejectUnauthorized: false // Helps with some network environments
-  }
+  },
+  family: 4 // Force IPv4 routing (Resolves IPv6 ENETUNREACH error on Render)
 });
 
 
