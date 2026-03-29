@@ -1,17 +1,11 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: parseInt(process.env.SMTP_PORT) === 465, // true for port 465, false for others (like 587)
+  service: 'gmail',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  },
-  tls: {
-    rejectUnauthorized: false // Helps with some network environments
-  },
-  family: 4 // Force IPv4 routing (Resolves IPv6 ENETUNREACH error on Render)
+  }
 });
 
 
