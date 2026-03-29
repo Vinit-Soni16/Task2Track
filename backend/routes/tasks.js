@@ -25,6 +25,26 @@ const upload = multer({
 
 const router = express.Router();
 
+// GET /api/tasks/test-email - Direct test for email configuration
+router.get('/test-email', async (req, res) => {
+  try {
+    const { sendTaskAssignmentEmail } = require('../services/emailService');
+    const mockTask = { title: 'Test Task from API', priority: 'high' };
+    const mockUser = { name: 'Admin', email: process.env.ADMIN_EMAIL || 'vinit@ad2ship.com' };
+    
+    // Attempt to send email
+    const result = await sendTaskAssignmentEmail(mockTask, mockUser);
+    
+    if (result) {
+      res.json({ success: true, message: 'Email sent successfully via the backend!' });
+    } else {
+      res.json({ success: false, message: 'Failed to send email. Check backend logs for detailed error or it was caught as false.' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.toString() });
+  }
+});
+
 // GET /api/tasks - Get tasks (admin sees all, member sees own)
 router.get('/', auth, async (req, res) => {
   try {
