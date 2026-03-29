@@ -1,12 +1,15 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false, // ⚠️ must be false
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: parseInt(process.env.SMTP_PORT) === 465, // true for port 465, false for others (like 587)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false // Helps with some network environments
   }
 });
 
@@ -77,7 +80,7 @@ async function sendTaskAssignmentEmail(task, user) {
     console.log(`[EMAIL] Assignment email sent for "${task.title}" to ${user.email}`);
     return true;
   } catch (error) {
-    console.error(`[EMAIL] Failed assignment email for "${task.title}":`, error.message);
+    console.error(`[EMAIL] Failed assignment email for "${task.title}":`, error);
     return false;
   }
 }
@@ -104,7 +107,7 @@ async function sendTaskCompletionEmail(task, admin) {
     console.log(`[EMAIL] Completion email sent for "${task.title}" to ${admin.email}`);
     return true;
   } catch (error) {
-    console.error(`[EMAIL] Failed completion email for "${task.title}":`, error.message);
+    console.error(`[EMAIL] Failed completion email for "${task.title}":`, error);
     return false;
   }
 }
