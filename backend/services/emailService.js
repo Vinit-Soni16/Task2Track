@@ -1,15 +1,62 @@
 const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    type: 'OAuth2',
-    user: process.env.EMAIL_USER,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    refreshToken: process.env.REFRESH_TOKEN,
-  },
-});
+// ─── OAuth2 & Gmail API Setup ───
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground' // Default for Gmail OAuth
+);
+
+oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
+
+/**
+ * Base64url encode a string/buffer
+ */
+function encodeMessage(message) {
+  return Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+/**
+ * Send email via Gmail REST API (bypasses SMTP ports)
+ */
+async function sendMailViaAPI(options) {
+  try {
+    const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
+    
+    // We use nodemailer to BUILD the MIME message but NOT to send it
+    const mailComposer = nodemailer.createTransport({
+      streamTransport: true,
+      newline: 'unix',
+      buffer: true
+    });
+
+    const info = await new Promise((resolve, reject) => {
+      mailComposer.sendMail(options, (err, info) => {
+        if (err) reject(err);
+        else resolve(info);
+      });
+    });
+
+    const rawMessage = encodeMessage(info.message);
+
+    const res = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: rawMessage
+      }
+    });
+
+    return res.data;
+  } catch (error) {
+    console.error('[GMAIL API ERROR]', error.response?.data || error.message);
+    throw error;
+  }
+}
 
 const FRONTEND_URL = process.env.FRONTEND_URL 
 
@@ -68,7 +115,7 @@ async function sendTaskAssignmentEmail(task, user) {
       <p style="color: #334155; font-size: 14px;">Please start working on this task and update its status regularly.</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `📋 New Task Assigned: ${task.title}`,
@@ -95,7 +142,7 @@ async function sendTaskCompletionEmail(task, admin) {
       </div>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: admin.email,
       subject: `✅ Task Completed: ${task.title}`,
@@ -119,7 +166,7 @@ async function sendReminder24h(task, user) {
       <p style="color: #334155; font-size: 14px;">⏳ Please prioritize this task and complete it before the deadline.</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `⚠️ 24 Hours Left: ${task.title}`,
@@ -143,7 +190,7 @@ async function sendReminder12h(task, user) {
       <p style="color: #334155; font-size: 14px;">🔥 Time is running out. Please complete this task as soon as possible!</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `🔥 12 Hours Left: ${task.title}`,
@@ -167,7 +214,7 @@ async function sendReminder1h(task, user) {
       <p style="color: #ef4444; font-size: 14px; font-weight: 600;">⚡ Complete this task RIGHT NOW or it will be marked as overdue!</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `🚨 1 Hour Left: ${task.title}`,
@@ -191,7 +238,7 @@ async function sendOverdueToMember(task, user) {
       <p style="color: #ef4444; font-size: 14px; font-weight: 600;">Your admin has been notified. Please complete this task immediately or provide an update.</p>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `❌ Deadline Missed: ${task.title}`,
@@ -221,7 +268,7 @@ async function sendOverdueToAdmin(task, member, admin) {
       </div>
     `;
 
-    await transporter.sendMail({
+    await sendMailViaAPI({
       from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: admin.email,
       subject: `🚩 ${member.name} Missed Deadline: ${task.title}`,
