@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "../lib/api";
 
@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
   }, []);
 
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const token = localStorage.getItem("task2track_token");
       if (!token) {
@@ -32,30 +32,30 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
     localStorage.setItem("task2track_token", res.data.token);
     localStorage.setItem("task2track_user", JSON.stringify(res.data.user));
     setUser(res.data.user);
     return res.data.user;
-  };
+  }, []);
 
-  const signup = async (name, email, password, department) => {
+  const signup = useCallback(async (name, email, password, department) => {
     const res = await api.post("/auth/signup", { name, email, password, department });
     localStorage.setItem("task2track_token", res.data.token);
     localStorage.setItem("task2track_user", JSON.stringify(res.data.user));
     setUser(res.data.user);
     return res.data.user;
-  };
+  }, []);
 
-  const updateUser = (updatedUser) => {
+  const updateUser = useCallback((updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem("task2track_user", JSON.stringify(updatedUser));
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const res = await api.get("/auth/me");
       setUser(res.data.user);
@@ -63,17 +63,27 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("Failed to refresh user:", error);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("task2track_token");
     localStorage.removeItem("task2track_user");
     setUser(null);
     router.push("/login");
-  };
+  }, [router]);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    login,
+    signup,
+    logout,
+    updateUser,
+    refreshUser
+  }), [user, loading, login, signup, logout, updateUser, refreshUser]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

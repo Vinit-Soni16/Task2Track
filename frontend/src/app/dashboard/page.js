@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,7 +38,7 @@ export default function DashboardPage() {
     fetchData();
   }, [user, authLoading]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [tasksRes, statsRes, usersRes] = await Promise.all([
         api.get('/tasks'),
@@ -52,9 +52,9 @@ export default function DashboardPage() {
       console.error('Failed to fetch data:', error);
     }
     setLoading(false);
-  };
+  }, []);
 
-  const handleCreateTask = async (data) => {
+  const handleCreateTask = useCallback(async (data) => {
     let payload = data;
     
     // Convert to FormData if file is present
@@ -71,30 +71,30 @@ export default function DashboardPage() {
     const res = await api.post('/tasks', payload);
     setTasks(prev => [res.data, ...prev]);
     fetchData();
-  };
+  }, [fetchData]);
 
-  const handleTaskUpdate = (updatedTask) => {
+  const handleTaskUpdate = useCallback((updatedTask) => {
     setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
     fetchData();
-  };
+  }, [fetchData]);
 
-  const handleTaskDelete = (taskId) => {
+  const handleTaskDelete = useCallback((taskId) => {
     setTasks(prev => prev.filter(t => t._id !== taskId));
     fetchData();
-  };
+  }, [fetchData]);
 
-  const handleAITaskCreated = (task) => {
+  const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
     fetchData();
-  };
+  }, [fetchData]);
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = useMemo(() => tasks.filter(task => {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     return true;
-  });
+  }), [tasks, statusFilter, priorityFilter]);
 
-  const importantTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed');
+  const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
   // Dashboard title based on role
   const dashboardTitle = user?.role === 'admin' 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,24 +45,23 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-dvh flex flex-col-reverse lg:flex-row auth-gradient overflow-x-hidden">
-      {/* Left Panel - Decorative (hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 bg-linear-to-br from-slate-800 to-slate-900 items-center justify-center p-12 overflow-hidden">
-        <div className="max-w-lg text-center animate-fadeIn">
-         {/* Logo Image */}
-<div className="w-full aspect-4/3 bg-linear-to-br from-slate-600/30 via-slate-500/20 to-slate-600/30 rounded-3xl mb-8 flex items-center justify-center overflow-hidden shadow-lg backdrop-blur-sm relative">
-  <img 
-    src="/Images/Task2Track_logo.WebP" 
-    alt="Task2Track Logo" 
-    className="w-full h-full object-cover  "
-  />
-</div>
-
-          <h2 className="text-2xl font-bold text-white mb-3">Join your team</h2>
-          <p className="text-slate-400 leading-relaxed">
-            Create an account to start managing tasks and collaborating with your team.
-          </p>
+      {useMemo(() => (
+        <div className="hidden lg:flex w-1/2 bg-linear-to-br from-slate-800 to-slate-900 items-center justify-center p-12 overflow-hidden">
+          <div className="max-w-lg text-center animate-fadeIn">
+            <div className="w-full aspect-4/3 bg-linear-to-br from-slate-600/30 via-slate-500/20 to-slate-600/30 rounded-3xl mb-8 flex items-center justify-center overflow-hidden shadow-lg backdrop-blur-sm relative">
+              <img 
+                src="/Images/Task2Track_logo.WebP" 
+                alt="Task2Track Logo" 
+                className="w-full h-full object-cover  "
+              />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Join your team</h2>
+            <p className="text-slate-400 leading-relaxed">
+              Create an account to start managing tasks and collaborating with your team.
+            </p>
+          </div>
         </div>
-      </div>
+      ), [])}
 
       {/* Right Panel - Signup Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-8 lg:px-20 py-10 lg:py-0 min-h-dvh">

@@ -1,10 +1,11 @@
 'use client';
 
+import { memo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { Paperclip, ExternalLink, Download } from 'lucide-react';
 
-export default function TaskCard({ task, onTaskUpdate }) {
+const TaskCard = memo(function TaskCard({ task, onTaskUpdate }) {
   const handleStatusChange = async (newStatus) => {
     try {
       const res = await api.put(`/tasks/${task._id}`, { status: newStatus });
@@ -102,4 +103,6 @@ export default function TaskCard({ task, onTaskUpdate }) {
       </div>
     </div>
   );
-}
+});
+
+export default TaskCard;

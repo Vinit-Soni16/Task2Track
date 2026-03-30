@@ -30,26 +30,53 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Seed admin user
+// Seed admin users
 async function seedAdmin() {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL ;
-    const existing = await User.findOne({ email: adminEmail });
+    const adminEmailsStr = process.env.ADMIN_EMAILS;
+    if (adminEmailsStr) {
+      const adminEmails = adminEmailsStr.split(',').map(e => e.trim());
+      const adminPassword = process.env.ADMIN_PASSWORD ;
+      
+      for (const email of adminEmails) {
+        if (!email) continue;
+        
+        const existing = await User.findOne({ email });
+        
+        if (!existing) {
+          // Create name from email prefix (e.g. anjali -> Anjali)
+          const prefix = email.split('@')[0];
+          const adminName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+          
+          const admin = new User({
+            name: adminName,
+            email: email,
+            password: adminPassword,
+            role: 'admin'
+          });
+          await admin.save();
+          console.log(`Admin user seeded: ${email}`);
+        } else {
+          // If they exist but aren't admin, upgrade them
+          if (existing.role !== 'admin') {
+            existing.role = 'admin';
+            await existing.save();
+            console.log(`Upgraded existing user ${email} to admin role.`);
+          } else {
+            console.log(`Admin user already exists: ${email}`);
+          }
+        }
+      }
+    }
     
-    if (!existing) {
-      const admin = new User({
-        name: process.env.ADMIN_NAME ,
-        email: adminEmail,
-        password: process.env.ADMIN_PASSWORD ,
-        role: 'admin'
-      });
-      await admin.save();
-      console.log(`Admin user seeded: ${adminEmail}`);
-    } else {
-      console.log(`Admin user already exists`);
+    // Remove old admin as requested
+    const oldAdmin = await User.findOne({ email: 'vinit@ad2ship.com' });
+    if (oldAdmin) {
+      await User.deleteOne({ email: 'vinit@ad2ship.com' });
+      console.log('Removed old admin: vinit@ad2ship.com');
     }
   } catch (error) {
-    console.error('Failed to seed admin:', error);
+    console.error('Failed to seed admins:', error);
   }
 }
 

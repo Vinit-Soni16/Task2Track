@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
 
-export default function TaskTable({ tasks, onTaskUpdate }) {
+const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate }) {
   const [updatingId, setUpdatingId] = useState(null);
 
   const handleStatusChange = async (taskId, newStatus) => {
@@ -164,4 +164,6 @@ export default function TaskTable({ tasks, onTaskUpdate }) {
       </table>
     </div>
   );
-}
+});
+
+export default TaskTable;
