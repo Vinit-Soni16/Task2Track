@@ -10,7 +10,9 @@ import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
 import AIAssistant from '../../components/AIAssistant';
 import SkeletonBase, { TableRowSkeleton } from '../../components/Skeleton';
-import { Plus, List, LayoutGrid, Search, Filter } from 'lucide-react';
+import { Plus, List, LayoutGrid, Search, Filter, Activity, Flag } from 'lucide-react';
+import CustomSelect from '../../components/CustomSelect';
+import { DEPARTMENTS } from '../../lib/constants';
 
 export default function TasksPage() {
   const { user, loading: authLoading } = useAuth();
@@ -22,6 +24,7 @@ export default function TasksPage() {
   const [viewMode, setViewMode] = useState('table');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
 
@@ -81,9 +84,16 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => tasks.filter(task => {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+    
+    if (deptFilter !== 'all') {
+      const taskDept = task.assignedTo?.department?.trim().toLowerCase();
+      const filterDept = deptFilter.trim().toLowerCase();
+      if (taskDept !== filterDept) return false;
+    }
+
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase()) && !task.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  }), [tasks, statusFilter, priorityFilter, searchQuery]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter, searchQuery]);
 
   if (authLoading && !user) {
     return (
@@ -132,29 +142,37 @@ export default function TasksPage() {
 
             {/* Filters and Views */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-                <Filter className="w-4 h-4 text-slate-400" />
-                <select
+              <div className="flex flex-wrap items-center gap-2 px-1 py-1 bg-slate-50 border border-slate-200 rounded-xl w-full xl:w-auto">
+                <CustomSelect
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-sm font-medium text-slate-600 focus:outline-none"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-                <div className="w-px h-4 bg-slate-200 mx-1" />
-                <select
+                  onChange={setStatusFilter}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'in-progress', label: 'In Progress' },
+                    { value: 'completed', label: 'Completed' }
+                  ]}
+                  className="!w-40 border-none bg-transparent"
+                />
+                <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
+                <CustomSelect
                   value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="bg-transparent text-sm font-medium text-slate-600 focus:outline-none"
-                >
-                  <option value="all">All Priority</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
+                  onChange={setPriorityFilter}
+                  options={[
+                    { value: 'all', label: 'All Priority' },
+                    { value: 'high', label: 'High' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'low', label: 'Low' }
+                  ]}
+                  className="!w-40 border-none bg-transparent"
+                />
+                <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
+                <CustomSelect
+                  value={deptFilter}
+                  onChange={setDeptFilter}
+                  options={DEPARTMENTS.map(d => ({ value: d, label: d === 'all' ? 'All Depts' : d }))}
+                  className="!w-40 border-none bg-transparent"
+                />
               </div>
 
               <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1">

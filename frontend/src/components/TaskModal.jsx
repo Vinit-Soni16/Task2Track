@@ -1,7 +1,21 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { X, Paperclip, Link, FileText, Trash2 } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { X, Paperclip, Link, FileText, Trash2, Users, Building2, Flag, Activity } from 'lucide-react';
+import CustomSelect from './CustomSelect';
+
+const DEPARTMENTS = [
+  'All Departments',
+  'Sales',
+  'HR',
+  'Shopify Development',
+  'Performance Marketer',
+  'Social Media',
+  'Finance',
+  'Graphic Designer',
+  'Video Editor',
+  'Technical'
+];
 
 export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
   const [formData, setFormData] = useState({
@@ -15,6 +29,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
     attachmentUrl: '',
     file: null
   });
+  const [selectedDept, setSelectedDept] = useState('All Departments');
   const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +58,11 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
     }
     setLoading(false);
   };
+
+  const filteredUsers = useMemo(() => {
+    if (!selectedDept || selectedDept === 'All Departments') return users;
+    return users.filter(u => u.department === selectedDept);
+  }, [users, selectedDept]);
 
   if (!isOpen) return null;
 
@@ -81,19 +101,27 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Assign To</label>
-              <select
-                value={formData.assignedTo}
-                onChange={(e) => setFormData({...formData, assignedTo: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="">Unassigned</option>
-                {users.map(u => (
-                  <option key={u._id} value={u._id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              label="Filter by Department"
+              value={selectedDept}
+              onChange={setSelectedDept}
+              options={DEPARTMENTS}
+              icon={Building2}
+            />
+            <CustomSelect
+              label="Assign To"
+              value={formData.assignedTo}
+              onChange={(val) => setFormData({...formData, assignedTo: val})}
+              options={[
+                { value: '', label: 'Unassigned' },
+                ...filteredUsers.map(u => ({ value: u._id, label: u.name }))
+              ]}
+              icon={Users}
+              placeholder="Select team member"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Deadline</label>
               <input
@@ -103,34 +131,30 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
+            <CustomSelect
+              label="Priority"
+              value={formData.priority}
+              onChange={(val) => setFormData({...formData, priority: val})}
+              options={[
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' }
+              ]}
+              icon={Flag}
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="pending">Pending</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-          </div>
+          <CustomSelect
+            label="Initial Status"
+            value={formData.status}
+            onChange={(val) => setFormData({...formData, status: val})}
+            options={[
+              { value: 'pending', label: 'Pending' },
+              { value: 'in-progress', label: 'In Progress' },
+              { value: 'completed', label: 'Completed' }
+            ]}
+            icon={Activity}
+          />
           
 
 

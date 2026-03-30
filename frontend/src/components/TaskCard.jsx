@@ -1,9 +1,10 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { Paperclip, ExternalLink, Download } from 'lucide-react';
+import CustomSelect from './CustomSelect';
 
 const priorityColors = {
   high: 'border-l-red-500 bg-red-50/30',
@@ -51,12 +52,17 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           {task.assignedTo ? (
-            <>
-              <div className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-semibold">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
                 {task.assignedTo.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
               </div>
-              <span className="text-slate-600">{task.assignedTo.name}</span>
-            </>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
+                {task.assignedTo.department && (
+                  <span className="text-[9px] text-slate-400 truncate leading-none mt-0.5">{task.assignedTo.department}</span>
+                )}
+              </div>
+            </div>
           ) : (
             <span className="text-slate-400">Unassigned</span>
           )}
@@ -93,15 +99,16 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
       )}
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-        <select
+        <CustomSelect
           value={task.status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          className="text-xs border border-slate-200 rounded-xl px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        >
-          <option value="pending">Pending</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
-        </select>
+          onChange={handleStatusChange}
+          options={[
+            { value: 'pending', label: 'Pending' },
+            { value: 'in-progress', label: 'In Progress' },
+            { value: 'completed', label: 'Completed' }
+          ]}
+          className="!w-40"
+        />
       </div>
     </div>
   );

@@ -11,6 +11,9 @@ import StatCard from '../../components/StatCard';
 import TaskTable from '../../components/TaskTable';
 import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
+import CustomSelect from '../../components/CustomSelect';
+
+import { DEPARTMENTS } from '../../lib/constants';
 
 const AIAssistant = dynamic(() => import('../../components/AIAssistant'), { ssr: false });
 const WeeklyProgress = dynamic(() => import('../../components/WeeklyProgress'), {
@@ -40,6 +43,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState('table');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState('all');
 
   const fetchData = useCallback(async () => {
     try {
@@ -109,8 +113,15 @@ export default function DashboardPage() {
   const filteredTasks = useMemo(() => tasks.filter(task => {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+    
+    if (deptFilter !== 'all') {
+      const taskDept = task.assignedTo?.department?.trim().toLowerCase();
+      const filterDept = deptFilter.trim().toLowerCase();
+      if (taskDept !== filterDept) return false;
+    }
+    
     return true;
-  }), [tasks, statusFilter, priorityFilter]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter]);
 
   const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
@@ -217,14 +228,33 @@ export default function DashboardPage() {
 
         {/* Recent Tasks Section */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <h2 className="text-lg sm:text-xl font-bold text-slate-800">Recent Tasks</h2>
-            <Link
-              href="/tasks"
-              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors"
-            >
-              View All <TrendingUp className="w-3 h-3" rotate={90} />
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <CustomSelect
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'in-progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' }
+                ]}
+                className="!w-32 border-none bg-transparent"
+              />
+              <CustomSelect
+                value={deptFilter}
+                onChange={setDeptFilter}
+                options={DEPARTMENTS.map(d => ({ value: d, label: d === 'all' ? 'All Depts' : d }))}
+                className="!w-32 border-none bg-transparent"
+              />
+              <Link
+                href="/tasks"
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors px-3 py-2 bg-slate-50 rounded-xl"
+              >
+                View All <TrendingUp className="w-3 h-3" rotate={90} />
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -241,7 +271,7 @@ export default function DashboardPage() {
                 </table>
               ) : (
                 <TaskTable
-                  tasks={tasks.slice(0, 5)}
+                  tasks={filteredTasks.slice(0, 5)}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskDelete={handleTaskDelete}
                   user={user}

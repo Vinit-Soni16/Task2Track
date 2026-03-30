@@ -53,12 +53,10 @@ router.get('/', auth, async (req, res) => {
 
     if (req.user.role !== 'admin') {
       query.assignedTo = req.user._id;
-    } else {
-      query.createdBy = req.user._id;
     }
 
     const tasks = await Task.find(query)
-      .populate('assignedTo', 'name email')
+      .populate('assignedTo', 'name email department')
       .populate('createdBy', 'name email')
       .populate('acknowledgment.taggedAdmin', 'name email')
       .sort({ createdAt: -1 });
@@ -83,7 +81,7 @@ router.get('/stats', auth, async (req, res) => {
     // Initial match query based on role
     const matchQuery = userRole !== 'admin' 
       ? { assignedTo: userId } 
-      : { createdBy: userId };
+      : {};
 
     const stats = await Task.aggregate([
       { $match: matchQuery },

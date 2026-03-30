@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { User, Mail, Lock, CheckSquare, Building2 } from 'lucide-react';
+import CustomSelect from '../../components/CustomSelect';
 
 const DEPARTMENTS = [
   'Sales',
@@ -117,24 +118,16 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <select
-                  id="signup-department"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all hover:border-slate-300 appearance-none bg-white"
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <CustomSelect
+              label="Department"
+              value={department}
+              onChange={setDepartment}
+              options={DEPARTMENTS}
+              placeholder="Select Department"
+              icon={Building2}
+              error={error && !department ? 'Department is required' : ''}
+              className="animate-fadeIn"
+            />
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>

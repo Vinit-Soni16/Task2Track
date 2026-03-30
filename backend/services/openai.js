@@ -90,7 +90,8 @@ function fallbackParse(text, users) {
 /**
  * Parse natural language input into structured task data
  */
-async function parseTaskFromText(text, users) {
+async function parseTaskFromText(text = '', users = []) {
+  if (!text || text.trim() === '') return fallbackParse('', users);
   const userNames = users.map(u => u.name).join(', ');
   
   const prompt = `You are a task parser. Extract structured task information from this natural language input.

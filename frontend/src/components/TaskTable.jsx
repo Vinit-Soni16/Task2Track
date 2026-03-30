@@ -4,6 +4,7 @@ import { useState, memo, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
+import CustomSelect from './CustomSelect';
 
 const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
   const [updatingId, setUpdatingId] = useState(null);
@@ -121,13 +122,18 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
               <td className="py-3 px-4">
                 {task.assignedTo ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                    <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
                       {task.assignedTo.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
-                    <span className="text-sm text-slate-600">{task.assignedTo.name}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
+                      {task.assignedTo.department && (
+                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.assignedTo.department}</span>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-400">Unassigned</span>
+                  <span className="text-xs text-slate-400">Unassigned</span>
                 )}
               </td>
               <td className="py-3 px-4">
@@ -139,23 +145,17 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
                 </span>
               </td>
               <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-              <td className="py-3 px-4">
-                <select
+              <td className="py-3 px-4 min-w-[140px]">
+                <CustomSelect
                   value={task.status}
-                  onChange={(e) => handleStatusChange(task._id, e.target.value)}
-                  disabled={updatingId === task._id}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                    task.status === 'completed'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : task.status === 'in-progress'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-slate-50 text-slate-700 border-slate-200'
-                  } ${updatingId === task._id ? 'opacity-50' : ''}`}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
+                  onChange={(val) => handleStatusChange(task._id, val)}
+                  options={[
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'in-progress', label: 'In Progress' },
+                    { value: 'completed', label: 'Completed' }
+                  ]}
+                  className={updatingId === task._id ? 'opacity-50 pointer-events-none' : ''}
+                />
               </td>
             </tr>
           ))}
