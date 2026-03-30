@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
@@ -30,11 +30,11 @@ router.get('/test-email', async (req, res) => {
   try {
     const { sendTaskAssignmentEmail } = require('../services/emailService');
     const mockTask = { title: 'Test Task from API', priority: 'high' };
-    const mockUser = { name: 'Admin', email: process.env.ADMIN_EMAIL || 'vinit@ad2ship.com' };
-    
+    const mockUser = { name: 'Admin', email: process.env.ADMIN_EMAIL };
+
     // Attempt to send email
     const result = await sendTaskAssignmentEmail(mockTask, mockUser);
-    
+
     if (result) {
       res.json({ success: true, message: 'Email sent successfully via the backend!' });
     } else {
@@ -49,7 +49,7 @@ router.get('/test-email', async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     let query = {};
-    
+
     if (req.user.role !== 'admin') {
       query.assignedTo = req.user._id;
     } else {
@@ -86,7 +86,7 @@ router.get('/stats', auth, async (req, res) => {
     const completed = tasks.filter(t => t.status === 'completed').length;
     const inProgress = tasks.filter(t => t.status === 'in-progress').length;
     const pending = tasks.filter(t => t.status === 'pending').length;
-    const overdue = tasks.filter(t => 
+    const overdue = tasks.filter(t =>
       t.status !== 'completed' && t.deadline && new Date(t.deadline) < now
     ).length;
 
@@ -103,11 +103,11 @@ router.get('/stats', auth, async (req, res) => {
       date.setHours(0, 0, 0, 0);
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
-      
-      const completedOnDay = tasks.filter(t => 
+
+      const completedOnDay = tasks.filter(t =>
         t.completedAt && new Date(t.completedAt) >= date && new Date(t.completedAt) < nextDate
       ).length;
-      
+
       weeklyProgress.push({
         day: weekDays[date.getDay()],
         completed: completedOnDay
@@ -145,7 +145,7 @@ router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
     const completed = tasks.filter(t => t.status === 'completed').length;
     const inProgress = tasks.filter(t => t.status === 'in-progress').length;
     const pending = tasks.filter(t => t.status === 'pending').length;
-    const overdue = tasks.filter(t => 
+    const overdue = tasks.filter(t =>
       t.status !== 'completed' && t.deadline && new Date(t.deadline) < now
     ).length;
 
@@ -162,11 +162,11 @@ router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
       date.setHours(0, 0, 0, 0);
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
-      
-      const completedOnDay = tasks.filter(t => 
+
+      const completedOnDay = tasks.filter(t =>
         t.completedAt && new Date(t.completedAt) >= date && new Date(t.completedAt) < nextDate
       ).length;
-      
+
       weeklyProgress.push({
         day: weekDays[date.getDay()],
         completed: completedOnDay
@@ -297,7 +297,7 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
     const skipFields = ['attachmentType', 'attachmentUrl', 'acknowledgmentType', 'acknowledgmentUrl', 'taggedAdmin'];
     Object.keys(updates).forEach(key => {
       if (skipFields.includes(key)) return;
-      
+
       if (key === 'deadline' && updates[key]) {
         task[key] = new Date(updates[key]);
       } else {
@@ -335,7 +335,7 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
       if (updates.assignedTo && updates.assignedTo.toString() !== task.assignedTo?.toString()) {
         sendTaskAssignmentEmail(populatedTask, populatedTask.assignedTo);
       }
-      
+
       // If status changed to completed, notify creator
       if (oldStatus !== 'completed' && populatedTask.status === 'completed') {
         if (populatedTask.createdBy && populatedTask.createdBy.email) {

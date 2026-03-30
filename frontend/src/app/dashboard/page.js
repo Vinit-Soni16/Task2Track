@@ -13,17 +13,17 @@ import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
 
 const AIAssistant = dynamic(() => import('../../components/AIAssistant'), { ssr: false });
-const WeeklyProgress = dynamic(() => import('../../components/WeeklyProgress'), { 
+const WeeklyProgress = dynamic(() => import('../../components/WeeklyProgress'), {
   loading: () => <div className="h-64 bg-slate-100 animate-pulse rounded-xl" />,
-  ssr: false 
+  ssr: false
 });
-const PriorityDonut = dynamic(() => import('../../components/PriorityDonut'), { 
+const PriorityDonut = dynamic(() => import('../../components/PriorityDonut'), {
   loading: () => <div className="h-64 bg-slate-100 animate-pulse rounded-xl" />,
-  ssr: false 
+  ssr: false
 });
-const CompletionRate = dynamic(() => import('../../components/CompletionRate'), { 
+const CompletionRate = dynamic(() => import('../../components/CompletionRate'), {
   loading: () => <div className="h-32 bg-slate-100 animate-pulse rounded-xl" />,
-  ssr: false 
+  ssr: false
 });
 const CalendarWidget = dynamic(() => import('../../components/CalendarWidget'), { ssr: false });
 import SkeletonBase, { StatCardSkeleton, TableRowSkeleton } from '../../components/Skeleton';
@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
-    
+
     // Convert to FormData if file is present
     if (data.file) {
       payload = new FormData();
@@ -79,7 +79,7 @@ export default function DashboardPage() {
       });
       payload.append('file', data.file);
     }
-    
+
     const res = await api.post('/tasks', payload);
     setTasks(prev => [res.data, ...prev]);
   }, []);
@@ -105,8 +105,8 @@ export default function DashboardPage() {
   const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
   // Dashboard title based on role
-  const dashboardTitle = user?.role === 'admin' 
-    ? 'Admin Dashboard' 
+  const dashboardTitle = user?.role === 'admin'
+    ? 'Admin Dashboard'
     : `${user?.name || 'My'}'s Dashboard`;
 
   if (authLoading && !user) {
@@ -120,7 +120,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar />
-      
+
       <main className="lg:ml-60 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 lg:mb-8">
@@ -167,10 +167,10 @@ export default function DashboardPage() {
             <WeeklyProgress data={stats?.weeklyProgress || []} />
           </div>
           <div className="w-full">
-            <PriorityDonut 
-              pending={stats?.pending || 0} 
-              inProgress={stats?.inProgress || 0} 
-              completed={stats?.completed || 0} 
+            <PriorityDonut
+              pending={stats?.pending || 0}
+              inProgress={stats?.inProgress || 0}
+              completed={stats?.completed || 0}
             />
           </div>
         </div>
@@ -209,8 +209,8 @@ export default function DashboardPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg sm:text-xl font-bold text-slate-800">Recent Tasks</h2>
-            <Link 
-              href="/tasks" 
+            <Link
+              href="/tasks"
               className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors"
             >
               View All <TrendingUp className="w-3 h-3" rotate={90} />
@@ -230,10 +230,10 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               ) : (
-                <TaskTable 
-                  tasks={tasks.slice(0, 5)} 
-                  onTaskUpdate={handleTaskUpdate} 
-                  onTaskDelete={handleTaskDelete} 
+                <TaskTable
+                  tasks={tasks.slice(0, 5)}
+                  onTaskUpdate={handleTaskUpdate}
+                  onTaskDelete={handleTaskDelete}
                   user={user}
                 />
               )}
