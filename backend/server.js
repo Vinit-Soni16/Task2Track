@@ -81,7 +81,7 @@ async function seedAdmin() {
 }
 
 // Connect to MongoDB and start server
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 4000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 mongoose.connect(MONGODB_URI)
@@ -94,9 +94,9 @@ mongoose.connect(MONGODB_URI)
     // Start deadline cron
     startDeadlineCron();
     
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
+   app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
