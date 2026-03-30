@@ -282,6 +282,37 @@ async function sendOverdueToAdmin(task, member, admin) {
   }
 }
 
+/**
+ * Send OTP for password reset
+ */
+async function sendOTPEmail(user, otp) {
+  try {
+    const body = `
+      <div style="background-color: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+        <h2 style="color: #1e293b; margin-top: 0;">Verification Code</h2>
+        <p style="color: #475569; font-size: 16px; margin-bottom: 24px;">Someone requested a password reset for your Task2Track account. If this was you, use the code below to reset your password:</p>
+        <div style="background-color: #ffffff; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; display: inline-block; margin-bottom: 24px;">
+          <span style="font-size: 32px; font-weight: 800; color: #6366f1; letter-spacing: 5px; font-family: monospace;">${otp}</span>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">This code will expire in 10 minutes for your security.</p>
+        <p style="color: #64748b; font-size: 14px; margin-top: 24px; font-style: italic;">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `;
+
+    await sendMailViaAPI({
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: `🔐 Reset Your Password — ${otp}`,
+      html: emailWrapper('#6366f1', 'Password Reset Request', 'Security Alert', body)
+    });
+
+    return true;
+  } catch (error) {
+    console.error('[EMAIL ERROR] Failed OTP email:', error);
+    return false;
+  }
+}
+
 module.exports = { 
   sendTaskAssignmentEmail, 
   sendTaskCompletionEmail,
@@ -289,5 +320,6 @@ module.exports = {
   sendReminder12h,
   sendReminder1h,
   sendOverdueToMember,
-  sendOverdueToAdmin
+  sendOverdueToAdmin,
+  sendOTPEmail
 };

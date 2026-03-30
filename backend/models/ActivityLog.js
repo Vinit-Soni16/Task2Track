@@ -9,7 +9,7 @@ const activityLogSchema = new mongoose.Schema({
   action: {
     type: String,
     required: true,
-    enum: ['task_created', 'task_updated', 'task_completed', 'task_deleted', 'user_login', 'ai_task_created']
+    enum: ['task_created', 'task_updated', 'task_completed', 'task_deleted', 'user_login', 'ai_task_created', 'password_reset', 'user_signup']
   },
   taskId: {
     type: mongoose.Schema.Types.ObjectId,

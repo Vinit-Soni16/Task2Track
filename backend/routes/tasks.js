@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
@@ -72,61 +73,94 @@ router.get('/', auth, async (req, res) => {
 // GET /api/tasks/stats - Get task statistics
 router.get('/stats', auth, async (req, res) => {
   try {
-    let query = {};
-    if (req.user.role !== 'admin') {
-      query.assignedTo = req.user._id;
-    } else {
-      query.createdBy = req.user._id;
-    }
-
-    const tasks = await Task.find(query);
+    const userId = req.user._id;
+    const userRole = req.user.role;
     const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.status === 'completed').length;
-    const inProgress = tasks.filter(t => t.status === 'in-progress').length;
-    const pending = tasks.filter(t => t.status === 'pending').length;
-    const overdue = tasks.filter(t =>
-      t.status !== 'completed' && t.deadline && new Date(t.deadline) < now
-    ).length;
+    // Initial match query based on role
+    const matchQuery = userRole !== 'admin' 
+      ? { assignedTo: userId } 
+      : { createdBy: userId };
 
-    const highPriority = tasks.filter(t => t.priority === 'high').length;
-    const mediumPriority = tasks.filter(t => t.priority === 'medium').length;
-    const lowPriority = tasks.filter(t => t.priority === 'low').length;
+    const stats = await Task.aggregate([
+      { $match: matchQuery },
+      {
+        $facet: {
+          // General counts
+          counts: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+                inProgress: { $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+                highPriority: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } },
+                mediumPriority: { $sum: { $cond: [{ $eq: ['$priority', 'medium'] }, 1, 0] } },
+                lowPriority: { $sum: { $cond: [{ $eq: ['$priority', 'low'] }, 1, 0] } },
+                overdue: { 
+                  $sum: { 
+                    $cond: [
+                      { 
+                        $and: [
+                          { $ne: ['$status', 'completed'] },
+                          { $lt: ['$deadline', now] },
+                          { $ne: ['$deadline', null] }
+                        ] 
+                      }, 1, 0 
+                    ] 
+                  } 
+                }
+              }
+            }
+          ],
+          // Weekly progress (last 7 days)
+          weekly: [
+            {
+              $match: {
+                completedAt: { $gte: sevenDaysAgo },
+                status: 'completed'
+              }
+            },
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } },
+                count: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } }
+          ]
+        }
+      }
+    ]);
 
-    // Weekly progress (last 7 days)
+    const result = stats[0].counts[0] || {
+      total: 0, completed: 0, inProgress: 0, pending: 0,
+      highPriority: 0, mediumPriority: 0, lowPriority: 0, overdue: 0
+    };
+
+    // Format weekly progress for the frontend
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyProgress = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const completedOnDay = tasks.filter(t =>
-        t.completedAt && new Date(t.completedAt) >= date && new Date(t.completedAt) < nextDate
-      ).length;
-
+      const dateString = date.toISOString().split('T')[0];
+      const dayData = stats[0].weekly.find(w => w._id === dateString);
+      
       weeklyProgress.push({
         day: weekDays[date.getDay()],
-        completed: completedOnDay
+        completed: dayData ? dayData.count : 0
       });
     }
 
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
     res.json({
-      total,
-      completed,
-      inProgress,
-      pending,
-      overdue,
-      highPriority,
-      mediumPriority,
-      lowPriority,
+      ...result,
       weeklyProgress,
-      completionRate
+      completionRate: result.total > 0 ? Math.round((result.completed / result.total) * 100) : 0
     });
   } catch (error) {
     console.error('Get stats error:', error);
@@ -137,58 +171,89 @@ router.get('/stats', auth, async (req, res) => {
 // GET /api/tasks/stats/:userId - Get task statistics for a specific user (Admin only)
 router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
   try {
-    const query = { assignedTo: req.params.userId };
-    const tasks = await Task.find(query);
+    const targetUserId = req.params.userId;
     const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.status === 'completed').length;
-    const inProgress = tasks.filter(t => t.status === 'in-progress').length;
-    const pending = tasks.filter(t => t.status === 'pending').length;
-    const overdue = tasks.filter(t =>
-      t.status !== 'completed' && t.deadline && new Date(t.deadline) < now
-    ).length;
+    const [stats, userInfo] = await Promise.all([
+      Task.aggregate([
+        { $match: { assignedTo: new mongoose.Types.ObjectId(targetUserId) } },
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+                  inProgress: { $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] } },
+                  pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+                  highPriority: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } },
+                  mediumPriority: { $sum: { $cond: [{ $eq: ['$priority', 'medium'] }, 1, 0] } },
+                  lowPriority: { $sum: { $cond: [{ $eq: ['$priority', 'low'] }, 1, 0] } },
+                  overdue: { 
+                    $sum: { 
+                      $cond: [
+                        { 
+                          $and: [
+                            { $ne: ['$status', 'completed'] },
+                            { $lt: ['$deadline', now] },
+                            { $ne: ['$deadline', null] }
+                          ] 
+                        }, 1, 0 
+                      ] 
+                    } 
+                  }
+                }
+              }
+            ],
+            weekly: [
+              {
+                $match: {
+                  completedAt: { $gte: sevenDaysAgo },
+                  status: 'completed'
+                }
+              },
+              {
+                $group: {
+                  _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } },
+                  count: { $sum: 1 }
+                }
+              },
+              { $sort: { _id: 1 } }
+            ]
+          }
+        }
+      ]),
+      User.findById(targetUserId).select('name email department')
+    ]);
 
-    const highPriority = tasks.filter(t => t.priority === 'high').length;
-    const mediumPriority = tasks.filter(t => t.priority === 'medium').length;
-    const lowPriority = tasks.filter(t => t.priority === 'low').length;
+    const result = stats[0]?.counts[0] || {
+      total: 0, completed: 0, inProgress: 0, pending: 0,
+      highPriority: 0, mediumPriority: 0, lowPriority: 0, overdue: 0
+    };
 
-    // Weekly progress (last 7 days)
+    // Format weekly progress
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyProgress = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const completedOnDay = tasks.filter(t =>
-        t.completedAt && new Date(t.completedAt) >= date && new Date(t.completedAt) < nextDate
-      ).length;
-
+      const dateString = date.toISOString().split('T')[0];
+      const dayData = stats[0]?.weekly.find(w => w._id === dateString);
+      
       weeklyProgress.push({
         day: weekDays[date.getDay()],
-        completed: completedOnDay
+        completed: dayData ? dayData.count : 0
       });
     }
 
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    // Get user info
-    const userInfo = await User.findById(req.params.userId).select('name email department');
-
     res.json({
-      total,
-      completed,
-      inProgress,
-      pending,
-      overdue,
-      highPriority,
-      mediumPriority,
-      lowPriority,
+      ...result,
       weeklyProgress,
-      completionRate,
+      completionRate: result.total > 0 ? Math.round((result.completed / result.total) * 100) : 0,
       user: userInfo
     });
   } catch (error) {

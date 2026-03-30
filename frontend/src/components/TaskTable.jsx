@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
 
-const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteRequest, user }) {
+const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
   const [updatingId, setUpdatingId] = useState(null);
 
-  const handleStatusChange = async (taskId, newStatus) => {
+  const handleStatusChange = useCallback(async (taskId, newStatus) => {
     setUpdatingId(taskId);
     try {
       const res = await api.put(`/tasks/${taskId}`, { status: newStatus });
@@ -17,9 +17,9 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteReque
       console.error('Failed to update task:', error);
     }
     setUpdatingId(null);
-  };
+  }, [onTaskUpdate]);
 
-  const getPriorityBadge = (priority) => {
+  const getPriorityBadge = useCallback((priority) => {
     const colors = {
       high: 'bg-red-100 text-red-600',
       medium: 'bg-amber-100 text-amber-600',
@@ -30,32 +30,11 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteReque
         {priority}
       </span>
     );
-  };
+  }, []);
 
-  const getStatusSelector = (task) => {
-    return (
-      <select
-        value={task.status}
-        onChange={(e) => handleStatusChange(task._id, e.target.value)}
-        disabled={updatingId === task._id}
-        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-          task.status === 'completed'
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : task.status === 'in-progress'
-            ? 'bg-blue-50 text-blue-700 border-blue-200'
-            : 'bg-slate-50 text-slate-700 border-slate-200'
-        } ${updatingId === task._id ? 'opacity-50' : ''}`}
-      >
-        <option value="pending">Pending</option>
-        <option value="in-progress">In Progress</option>
-        <option value="completed">Completed</option>
-      </select>
-    );
-  };
+  const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
-
-  const renderAttachment = (task) => {
+  const renderAttachment = useCallback((task) => {
     if (!task.attachment || task.attachment.type === 'none') return null;
 
     if (task.attachment.type === 'file') {
@@ -91,8 +70,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteReque
     }
 
     return null;
-    return null;
-  };
+  }, [API_BASE]);
 
   if (tasks.length === 0) {
     return (
@@ -120,7 +98,10 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteReque
           {tasks.map(task => (
             <tr key={task._id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
               <td className="py-3 px-4">
-                <button onClick={() => handleStatusChange(task._id, task.status === 'completed' ? 'pending' : 'completed')}>
+                <button 
+                  onClick={() => handleStatusChange(task._id, task.status === 'completed' ? 'pending' : 'completed')}
+                  disabled={updatingId === task._id}
+                >
                   {task.status === 'completed' ? (
                     <CheckSquare className="w-5 h-5 text-indigo-500" />
                   ) : (
@@ -158,7 +139,24 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteReque
                 </span>
               </td>
               <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-              <td className="py-3 px-4">{getStatusSelector(task)}</td>
+              <td className="py-3 px-4">
+                <select
+                  value={task.status}
+                  onChange={(e) => handleStatusChange(task._id, e.target.value)}
+                  disabled={updatingId === task._id}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                    task.status === 'completed'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : task.status === 'in-progress'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-slate-50 text-slate-700 border-slate-200'
+                  } ${updatingId === task._id ? 'opacity-50' : ''}`}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </td>
             </tr>
           ))}
         </tbody>

@@ -5,31 +5,33 @@ import { format } from 'date-fns';
 import api from '../lib/api';
 import { Paperclip, ExternalLink, Download } from 'lucide-react';
 
-const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onCompleteRequest, user }) {
-  const handleStatusChange = async (newStatus) => {
+const priorityColors = {
+  high: 'border-l-red-500 bg-red-50/30',
+  medium: 'border-l-amber-500 bg-amber-50/30',
+  low: 'border-l-emerald-500 bg-emerald-50/30',
+};
+
+const statusColors = {
+  completed: 'bg-emerald-100 text-emerald-700',
+  'in-progress': 'bg-blue-100 text-blue-700',
+  pending: 'bg-slate-100 text-slate-600',
+};
+
+const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
+  const handleStatusChange = useCallback(async (newStatus) => {
     try {
       const res = await api.put(`/tasks/${task._id}`, { status: newStatus });
       onTaskUpdate(res.data);
     } catch (error) {
       console.error('Failed to update task:', error);
     }
-  };
+  }, [task._id, onTaskUpdate]);
 
-  const priorityColors = {
-    high: 'border-l-red-500 bg-red-50/30',
-    medium: 'border-l-amber-500 bg-amber-50/30',
-    low: 'border-l-emerald-500 bg-emerald-50/30',
-  };
+  const isOverdue = useMemo(() => 
+    task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
+  , [task.deadline, task.status]);
 
-  const statusColors = {
-    completed: 'bg-emerald-100 text-emerald-700',
-    'in-progress': 'bg-blue-100 text-blue-700',
-    pending: 'bg-slate-100 text-slate-600',
-  };
-
-  const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed';
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
+  const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
 
   return (
     <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${priorityColors[task.priority]} p-4 card-hover animate-fadeIn`}>
@@ -90,13 +92,11 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onCompleteRequest,
         </div>
       )}
 
-
-
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
         <select
           value={task.status}
           onChange={(e) => handleStatusChange(e.target.value)}
-          className="text-xs border border-slate-200 rounded-lg px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="text-xs border border-slate-200 rounded-xl px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           <option value="pending">Pending</option>
           <option value="in-progress">In Progress</option>

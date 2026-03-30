@@ -14,7 +14,8 @@ const taskSchema = new mongoose.Schema({
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null
+    default: null,
+    index: true
   },
   deadline: {
     type: Date,
@@ -28,12 +29,14 @@ const taskSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'in-progress', 'completed'],
-    default: 'pending'
+    default: 'pending',
+    index: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
   lastEmailSent: {
     type: Date,
@@ -53,7 +56,8 @@ const taskSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    index: true
   },
   attachment: {
     type: { 

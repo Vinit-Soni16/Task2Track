@@ -43,14 +43,12 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, statsRes, usersRes] = await Promise.all([
+      const [tasksRes, statsRes] = await Promise.all([
         api.get('/tasks'),
         api.get('/tasks/stats'),
-        api.get('/users'),
       ]);
       setTasks(tasksRes.data);
       setStats(statsRes.data);
-      setUsers(usersRes.data);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -65,6 +63,18 @@ export default function DashboardPage() {
     }
     fetchData();
   }, [user?._id, authLoading, router, fetchData]);
+
+  const handleOpenModal = useCallback(async () => {
+    if (users.length === 0) {
+      try {
+        const res = await api.get('/users');
+        setUsers(res.data);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    }
+    setShowModal(true);
+  }, [users.length]);
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
@@ -105,9 +115,9 @@ export default function DashboardPage() {
   const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
   // Dashboard title based on role
-  const dashboardTitle = user?.role === 'admin'
+  const dashboardTitle = useMemo(() => user?.role === 'admin'
     ? 'Admin Dashboard'
-    : `${user?.name || 'My'}'s Dashboard`;
+    : `${user?.name || 'My'}'s Dashboard`, [user]);
 
   if (authLoading && !user) {
     return (
@@ -132,7 +142,7 @@ export default function DashboardPage() {
             <CalendarWidget tasks={tasks} />
             {user?.role === 'admin' && (
               <button
-                onClick={() => setShowModal(true)}
+                onClick={handleOpenModal}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm flex-1 sm:flex-none"
               >
                 <Plus className="w-4 h-4" />
