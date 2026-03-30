@@ -63,6 +63,12 @@ const taskSchema = new mongoose.Schema({
     },
     url: { type: String, default: '' },
     name: { type: String, default: '' }
+  },
+  acknowledgment: {
+    taggedAdmin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    type: { type: String, enum: ['file', 'url', 'none'], default: 'none' },
+    url: { type: String, default: '' },
+    name: { type: String, default: '' }
   }
 });
 

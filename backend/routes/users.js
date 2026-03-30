@@ -62,7 +62,16 @@ router.put('/profile', auth, async (req, res) => {
 router.get('/analytics', auth, adminOnly, async (req, res) => {
   try {
     const users = await User.find().select('-password');
-    const tasks = await Task.find().populate('assignedTo', 'name email');
+    
+    // Filter tasks based on strict admin permissions
+    const taskQuery = { 
+      $or: [
+        { status: { $ne: 'completed' }, createdBy: req.user._id }, 
+        { status: 'completed', 'acknowledgment.taggedAdmin': req.user._id },
+        { status: 'completed', 'acknowledgment.taggedAdmin': null, createdBy: req.user._id }
+      ] 
+    };
+    const tasks = await Task.find(taskQuery).populate('assignedTo', 'name email');
 
     const analytics = users.map(user => {
       const userTasks = tasks.filter(t => 

@@ -5,16 +5,28 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/api';
+import dynamic from 'next/dynamic';
 import Sidebar from '../../components/Sidebar';
 import StatCard from '../../components/StatCard';
 import TaskTable from '../../components/TaskTable';
 import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
-import AIAssistant from '../../components/AIAssistant';
-import WeeklyProgress from '../../components/WeeklyProgress';
-import PriorityDonut from '../../components/PriorityDonut';
-import CompletionRate from '../../components/CompletionRate';
-import CalendarWidget from '../../components/CalendarWidget';
+
+const AIAssistant = dynamic(() => import('../../components/AIAssistant'), { ssr: false });
+const WeeklyProgress = dynamic(() => import('../../components/WeeklyProgress'), { 
+  loading: () => <div className="h-64 bg-slate-100 animate-pulse rounded-xl" />,
+  ssr: false 
+});
+const PriorityDonut = dynamic(() => import('../../components/PriorityDonut'), { 
+  loading: () => <div className="h-64 bg-slate-100 animate-pulse rounded-xl" />,
+  ssr: false 
+});
+const CompletionRate = dynamic(() => import('../../components/CompletionRate'), { 
+  loading: () => <div className="h-32 bg-slate-100 animate-pulse rounded-xl" />,
+  ssr: false 
+});
+const CalendarWidget = dynamic(() => import('../../components/CalendarWidget'), { ssr: false });
+import SkeletonBase, { StatCardSkeleton, TableRowSkeleton } from '../../components/Skeleton';
 import { TrendingUp, CheckCircle, Clock, AlertCircle, Plus, List, LayoutGrid, AlertTriangle } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -28,15 +40,6 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState('table');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    fetchData();
-  }, [user, authLoading]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -54,6 +57,15 @@ export default function DashboardPage() {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    fetchData();
+  }, [user?._id, authLoading, router, fetchData]);
+
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
     
@@ -70,23 +82,19 @@ export default function DashboardPage() {
     
     const res = await api.post('/tasks', payload);
     setTasks(prev => [res.data, ...prev]);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleTaskUpdate = useCallback((updatedTask) => {
     setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleTaskDelete = useCallback((taskId) => {
     setTasks(prev => prev.filter(t => t._id !== taskId));
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
@@ -101,16 +109,10 @@ export default function DashboardPage() {
     ? 'Admin Dashboard' 
     : `${user?.name || 'My'}'s Dashboard`;
 
-  if (authLoading || loading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 text-slate-400">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span>Loading dashboard...</span>
-        </div>
+        <SkeletonBase className="h-12 w-12 rounded-full" />
       </div>
     );
   }
@@ -142,10 +144,21 @@ export default function DashboardPage() {
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard label="Total Tasks" value={stats?.total || 0} icon={TrendingUp} color="slate" />
-          <StatCard label="Completed" value={stats?.completed || 0} icon={CheckCircle} color="green" />
-          <StatCard label="In Progress" value={stats?.inProgress || 0} icon={Clock} color="blue" />
-          <StatCard label="Overdue" value={stats?.overdue || 0} icon={AlertCircle} color="red" />
+          {loading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatCard label="Total Tasks" value={stats?.total || 0} icon={TrendingUp} color="slate" />
+              <StatCard label="Completed" value={stats?.completed || 0} icon={CheckCircle} color="green" />
+              <StatCard label="In Progress" value={stats?.inProgress || 0} icon={Clock} color="blue" />
+              <StatCard label="Overdue" value={stats?.overdue || 0} icon={AlertCircle} color="red" />
+            </>
+          )}
         </div>
 
         {/* Charts Row */}
@@ -206,20 +219,33 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <TaskTable 
-                tasks={tasks.slice(0, 5)} 
-                onTaskUpdate={handleTaskUpdate} 
-                onTaskDelete={handleTaskDelete} 
-              />
+              {loading ? (
+                <table className="w-full">
+                  <tbody>
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                  </tbody>
+                </table>
+              ) : (
+                <TaskTable 
+                  tasks={tasks.slice(0, 5)} 
+                  onTaskUpdate={handleTaskUpdate} 
+                  onTaskDelete={handleTaskDelete} 
+                  user={user}
+                />
+              )}
             </div>
-            {tasks.length > 5 && (
+            {!loading && tasks.length > 5 && (
               <div className="p-4 text-center border-t border-slate-100 bg-slate-50/30">
                 <Link href="/tasks" className="text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors">
                   Showing 5 of {tasks.length} tasks. Click to view all.
                 </Link>
               </div>
             )}
-            {tasks.length === 0 && (
+            {!loading && tasks.length === 0 && (
               <div className="py-12 text-center text-slate-400">
                 <p className="text-sm">No tasks found. Create your first task to get started!</p>
               </div>

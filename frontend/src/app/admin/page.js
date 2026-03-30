@@ -1,16 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/api';
+import dynamic from 'next/dynamic';
 import Sidebar from '../../components/Sidebar';
 import StatCard from '../../components/StatCard';
-import TeamDistribution from '../../components/TeamDistribution';
-import AIInsights from '../../components/AIInsights';
-import AIAssistant from '../../components/AIAssistant';
-import CalendarWidget from '../../components/CalendarWidget';
 import MemberDashboardModal from '../../components/MemberDashboardModal';
+import SkeletonBase, { StatCardSkeleton, TableRowSkeleton } from '../../components/Skeleton';
+
+const TeamDistribution = dynamic(() => import('../../components/TeamDistribution'), { 
+  loading: () => <div className="h-64 bg-slate-100 animate-pulse rounded-xl" />,
+  ssr: false 
+});
+const AIInsights = dynamic(() => import('../../components/AIInsights'), { 
+  loading: () => <div className="h-40 bg-slate-100 animate-pulse rounded-xl" />,
+  ssr: false 
+});
+const AIAssistant = dynamic(() => import('../../components/AIAssistant'), { ssr: false });
+const CalendarWidget = dynamic(() => import('../../components/CalendarWidget'), { ssr: false });
+
 import { Users, TrendingUp, Award, AlertTriangle, Sparkles, Eye, Building2 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -24,20 +34,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState(null);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    if (user.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-    fetchData();
-  }, [user, authLoading]);
 
-  const fetchData = async () => {
+
+  const fetchData = useCallback(async () => {
     try {
       const [analyticsRes, statsRes, tasksRes] = await Promise.all([
         api.get('/users/analytics'),
@@ -51,9 +50,22 @@ export default function AdminPage() {
       console.error('Failed to fetch admin data:', error);
     }
     setLoading(false);
-  };
+  }, []);
 
-  const generateInsights = async () => {
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    if (user.role !== 'admin') {
+      router.push('/dashboard');
+      return;
+    }
+    fetchData();
+  }, [user?._id, user?.role, authLoading, router, fetchData]);
+
+  const generateInsights = useCallback(async () => {
     setInsightsLoading(true);
     try {
       const res = await api.post('/ai/insights');
@@ -62,32 +74,26 @@ export default function AdminPage() {
       console.error('Failed to generate insights:', error);
     }
     setInsightsLoading(false);
-  };
+  }, []);
 
   const teamMembers = analytics.length;
   const totalTasks = stats?.total || 0;
   
-  const topPerformer = analytics.reduce((best, current) => {
+  const topPerformer = useMemo(() => analytics.reduce((best, current) => {
     if (!best || current.completionRate > best.completionRate) return current;
     return best;
-  }, null);
+  }, null), [analytics]);
 
-  const needsAttention = analytics.reduce((worst, current) => {
+  const needsAttention = useMemo(() => analytics.reduce((worst, current) => {
     if (current.totalTasks === 0) return worst;
     if (!worst || current.overdue > worst.overdue) return current;
     return worst;
-  }, null);
+  }, null), [analytics]);
 
-  if (authLoading || loading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 text-slate-400">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span>Loading admin dashboard...</span>
-        </div>
+        <SkeletonBase className="h-12 w-12 rounded-full" />
       </div>
     );
   }
@@ -119,40 +125,51 @@ export default function AdminPage() {
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard label="Team Members" value={teamMembers} icon={Users} color="slate" />
-          <StatCard label="Total Tasks" value={totalTasks} icon={TrendingUp} color="indigo" />
-          <div className="bg-white rounded-xl border border-emerald-200 p-4 sm:p-5 card-hover animate-fadeIn">
-            <div className="flex items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Top Performer</p>
-                <p className="text-base sm:text-lg font-bold text-emerald-600 truncate">
-                  {topPerformer?.name || '-'}
-                </p>
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
-                  {topPerformer ? `${topPerformer.completionRate}% completion` : 'No data'}
-                </p>
+          {loading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatCard label="Team Members" value={teamMembers} icon={Users} color="slate" />
+              <StatCard label="Total Tasks" value={totalTasks} icon={TrendingUp} color="indigo" />
+              <div className="bg-white rounded-xl border border-emerald-200 p-4 sm:p-5 card-hover animate-fadeIn">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Top Performer</p>
+                    <p className="text-base sm:text-lg font-bold text-emerald-600 truncate">
+                      {topPerformer?.name || '-'}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
+                      {topPerformer ? `${topPerformer.completionRate}% completion` : 'No data'}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-500 shrink-0">
+                    <Award className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-500 shrink-0">
-                <Award className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="bg-white rounded-xl border border-amber-200 p-4 sm:p-5 card-hover animate-fadeIn">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Needs Attention</p>
+                    <p className="text-base sm:text-lg font-bold text-slate-800 truncate">
+                      {needsAttention?.name || '-'}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
+                      {needsAttention ? `${needsAttention.overdue} pending tasks` : '0 pending tasks'}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500 shrink-0">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-amber-200 p-4 sm:p-5 card-hover animate-fadeIn">
-            <div className="flex items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Needs Attention</p>
-                <p className="text-base sm:text-lg font-bold text-slate-800 truncate">
-                  {needsAttention?.name || '-'}
-                </p>
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
-                  {needsAttention ? `${needsAttention.overdue} pending tasks` : '0 pending tasks'}
-                </p>
-              </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500 shrink-0">
-                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Team Distribution */}
@@ -187,55 +204,65 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {analytics.map(member => (
-                  <tr key={member._id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
-                          {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                {loading ? (
+                  <>
+                    <TableRowSkeleton cols={8} />
+                    <TableRowSkeleton cols={8} />
+                    <TableRowSkeleton cols={8} />
+                    <TableRowSkeleton cols={8} />
+                    <TableRowSkeleton cols={8} />
+                  </>
+                ) : (
+                  analytics.map(member => (
+                    <tr key={member._id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
+                            {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{member.name}</p>
+                            <p className="text-xs text-slate-400 truncate">{member.email}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{member.name}</p>
-                          <p className="text-xs text-slate-400 truncate">{member.email}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        {member.department ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600">
+                            <Building2 className="w-2.5 h-2.5" />
+                            {member.department}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm text-slate-600">{member.totalTasks}</td>
+                      <td className="py-3 px-4 text-center text-sm text-emerald-600 font-medium">{member.completed}</td>
+                      <td className="py-3 px-4 text-center text-sm text-amber-600">{member.pending}</td>
+                      <td className="py-3 px-4 text-center text-sm text-red-500 font-medium">{member.overdue}</td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full"
+                              style={{ width: `${member.completionRate}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-slate-500">{member.completionRate}%</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {member.department ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600">
-                          <Building2 className="w-2.5 h-2.5" />
-                          {member.department}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-300">-</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center text-sm text-slate-600">{member.totalTasks}</td>
-                    <td className="py-3 px-4 text-center text-sm text-emerald-600 font-medium">{member.completed}</td>
-                    <td className="py-3 px-4 text-center text-sm text-amber-600">{member.pending}</td>
-                    <td className="py-3 px-4 text-center text-sm text-red-500 font-medium">{member.overdue}</td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-emerald-500 rounded-full"
-                            style={{ width: `${member.completionRate}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-500">{member.completionRate}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => setSelectedMember(member)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
-                      >
-                        <Eye className="w-3 h-3" />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => setSelectedMember(member)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

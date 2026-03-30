@@ -12,6 +12,19 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Optimistic Auth: Check localStorage immediately
+    const cachedUser = localStorage.getItem("task2track_user");
+    const token = localStorage.getItem("task2track_token");
+    
+    if (cachedUser && token) {
+      try {
+        setUser(JSON.parse(cachedUser));
+        setLoading(false); // We have enough for an initial render
+      } catch (e) {
+        localStorage.removeItem("task2track_user");
+      }
+    }
+    
     checkAuth();
   }, []);
 
@@ -25,10 +38,19 @@ export function AuthProvider({ children }) {
       }
 
       const res = await api.get("/auth/me");
-      setUser(res.data.user);
+      const newUser = res.data.user;
+      setUser(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newUser)) return prev;
+        return newUser;
+      });
+      localStorage.setItem("task2track_user", JSON.stringify(newUser));
     } catch (error) {
-      localStorage.removeItem("task2track_token");
-      localStorage.removeItem("task2track_user");
+      // Only logout if it's a real 401/auth error, not a network hiccup
+      if (error.response?.status === 401) {
+        localStorage.removeItem("task2track_token");
+        localStorage.removeItem("task2track_user");
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,8 +80,12 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     try {
       const res = await api.get("/auth/me");
-      setUser(res.data.user);
-      localStorage.setItem("task2track_user", JSON.stringify(res.data.user));
+      const newUser = res.data.user;
+      setUser(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newUser)) return prev;
+        return newUser;
+      });
+      localStorage.setItem("task2track_user", JSON.stringify(newUser));
     } catch (error) {
       console.error("Failed to refresh user:", error);
     }

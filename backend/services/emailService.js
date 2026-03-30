@@ -1,13 +1,14 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
+  service: 'gmail',
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+    type: 'OAuth2',
+    user: process.env.EMAIL_USER,
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    refreshToken: process.env.REFRESH_TOKEN,
+  },
 });
 
 const FRONTEND_URL = process.env.FRONTEND_URL 
@@ -68,7 +69,7 @@ async function sendTaskAssignmentEmail(task, user) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `📋 New Task Assigned: ${task.title}`,
       html: emailWrapper('#6366f1', 'New Task Assigned', 'Notification', body)
@@ -95,7 +96,7 @@ async function sendTaskCompletionEmail(task, admin) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: admin.email,
       subject: `✅ Task Completed: ${task.title}`,
       html: emailWrapper('#10b981', 'Task Completed', 'Update', body)
@@ -119,7 +120,7 @@ async function sendReminder24h(task, user) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `⚠️ 24 Hours Left: ${task.title}`,
       html: emailWrapper('#f59e0b', '24 Hours Remaining', 'Deadline Reminder', body)
@@ -143,7 +144,7 @@ async function sendReminder12h(task, user) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `🔥 12 Hours Left: ${task.title}`,
       html: emailWrapper('#ea580c', '12 Hours Remaining', 'Urgent Reminder', body)
@@ -167,7 +168,7 @@ async function sendReminder1h(task, user) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `🚨 1 Hour Left: ${task.title}`,
       html: emailWrapper('#ef4444', 'Final Warning — 1 Hour Left', 'Critical Reminder', body)
@@ -191,7 +192,7 @@ async function sendOverdueToMember(task, user) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: `❌ Deadline Missed: ${task.title}`,
       html: emailWrapper('#dc2626', 'Task Deadline Missed', 'Overdue Alert', body)
@@ -221,7 +222,7 @@ async function sendOverdueToAdmin(task, member, admin) {
     `;
 
     await transporter.sendMail({
-      from: `"Task2Track" <${process.env.SMTP_USER}>`,
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
       to: admin.email,
       subject: `🚩 ${member.name} Missed Deadline: ${task.title}`,
       html: emailWrapper('#dc2626', 'Team Member Missed Deadline', 'Admin Alert', body)

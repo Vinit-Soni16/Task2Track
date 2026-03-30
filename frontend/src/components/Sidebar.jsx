@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import ProfileModal from './ProfileModal';
-import { LayoutDashboard, Users, LogOut, CheckSquare, Menu, X, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { LayoutDashboard, Users, LogOut, CheckSquare, Menu, X } from 'lucide-react';
+import { useState, memo } from 'react';
 
-export default function Sidebar() {
+const Sidebar = memo(function Sidebar() {
   const pathname = usePathname();
   const { user, logout, updateUser } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,7 +30,6 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 lg:px-6 lg:py-6">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center">
@@ -43,7 +42,6 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 mt-2">
         {filteredItems.map(item => {
           const Icon = item.icon;
@@ -67,7 +65,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* User Info */}
       <div className="px-4 py-4 border-t border-slate-700">
         <div className="flex items-center gap-3">
           <button 
@@ -100,7 +97,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-800 text-white rounded-lg shadow-lg"
@@ -108,7 +104,6 @@ export default function Sidebar() {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Mobile Overlay */}
       {mobileOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
@@ -116,19 +111,16 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-60 bg-slate-800 text-white flex-col z-40">
         {sidebarContent}
       </aside>
 
-      {/* Sidebar - Mobile */}
       <aside className={`lg:hidden fixed left-0 top-0 h-screen w-65 bg-slate-800 text-white flex flex-col z-50 transition-transform duration-300 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {sidebarContent}
       </aside>
 
-      {/* Profile Modal */}
       <ProfileModal 
         isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
@@ -137,4 +129,6 @@ export default function Sidebar() {
       />
     </>
   );
-}
+});
+
+export default Sidebar;

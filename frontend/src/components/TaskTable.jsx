@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import api from '../lib/api';
 import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
 
-const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate }) {
+const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onCompleteRequest, user }) {
   const [updatingId, setUpdatingId] = useState(null);
 
   const handleStatusChange = async (taskId, newStatus) => {
@@ -90,6 +90,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate }) {
       );
     }
 
+    return null;
     return null;
   };
 

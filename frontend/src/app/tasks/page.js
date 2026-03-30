@@ -9,6 +9,7 @@ import TaskTable from '../../components/TaskTable';
 import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
 import AIAssistant from '../../components/AIAssistant';
+import SkeletonBase, { TableRowSkeleton } from '../../components/Skeleton';
 import { Plus, List, LayoutGrid, Search, Filter } from 'lucide-react';
 
 export default function TasksPage() {
@@ -23,14 +24,7 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    fetchData();
-  }, [user, authLoading]);
+
   const fetchData = useCallback(async () => {
     try {
       const [tasksRes, usersRes] = await Promise.all([
@@ -44,6 +38,15 @@ export default function TasksPage() {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    fetchData();
+  }, [user?._id, authLoading, router, fetchData]);
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
@@ -61,23 +64,19 @@ export default function TasksPage() {
     
     const res = await api.post('/tasks', payload);
     setTasks(prev => [res.data, ...prev]);
-    fetchData();
   }, [fetchData]);
 
   const handleTaskUpdate = useCallback((updatedTask) => {
     setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
-    fetchData();
   }, [fetchData]);
 
   const handleTaskDelete = useCallback((taskId) => {
     setTasks(prev => prev.filter(t => t._id !== taskId));
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
@@ -86,16 +85,10 @@ export default function TasksPage() {
     return true;
   }), [tasks, statusFilter, priorityFilter, searchQuery]);
 
-  if (authLoading || loading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 text-slate-400">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span>Loading tasks...</span>
-        </div>
+        <SkeletonBase className="h-12 w-12 rounded-full" />
       </div>
     );
   }
@@ -187,22 +180,51 @@ export default function TasksPage() {
         {/* Task Views */}
         {viewMode === 'table' ? (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <TaskTable tasks={filteredTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
-            {filteredTasks.length === 0 && (
-              <div className="text-center py-12 bg-white">
-                <p className="text-slate-400 font-medium">No tasks found matching your criteria</p>
+            {loading ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <tbody>
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                  </tbody>
+                </table>
               </div>
+            ) : (
+              <>
+                <TaskTable tasks={filteredTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} user={user} />
+                {filteredTasks.length === 0 && (
+                  <div className="text-center py-12 bg-white">
+                    <p className="text-slate-400 font-medium">No tasks found matching your criteria</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredTasks.map(task => (
-              <TaskCard key={task._id} task={task} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
-            ))}
-            {filteredTasks.length === 0 && (
-              <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 border-dashed">
-                <p className="text-slate-400 font-medium">No tasks found matching your criteria</p>
-              </div>
+            {loading ? (
+              <>
+                <div className="h-40 bg-slate-100 animate-pulse rounded-2xl" />
+                <div className="h-40 bg-slate-100 animate-pulse rounded-2xl" />
+                <div className="h-40 bg-slate-100 animate-pulse rounded-2xl" />
+              </>
+            ) : (
+              <>
+                {filteredTasks.map(task => (
+                  <TaskCard key={task._id} task={task} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} user={user} />
+                ))}
+                {filteredTasks.length === 0 && (
+                  <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 border-dashed">
+                    <p className="text-slate-400 font-medium">No tasks found matching your criteria</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

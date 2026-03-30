@@ -52,11 +52,14 @@ router.get('/', auth, async (req, res) => {
     
     if (req.user.role !== 'admin') {
       query.assignedTo = req.user._id;
+    } else {
+      query.createdBy = req.user._id;
     }
 
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email')
       .populate('createdBy', 'name email')
+      .populate('acknowledgment.taggedAdmin', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(tasks);
@@ -72,6 +75,8 @@ router.get('/stats', auth, async (req, res) => {
     let query = {};
     if (req.user.role !== 'admin') {
       query.assignedTo = req.user._id;
+    } else {
+      query.createdBy = req.user._id;
     }
 
     const tasks = await Task.find(query);
@@ -285,8 +290,14 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
       task.attachment = { type: 'none' };
     }
 
-    // Update fields
+    // Acknowledgment logic removed to keep database light
+    // Handling standard status updates only
+
+    // Update other fields, but skip special ones handled above
+    const skipFields = ['attachmentType', 'attachmentUrl', 'acknowledgmentType', 'acknowledgmentUrl', 'taggedAdmin'];
     Object.keys(updates).forEach(key => {
+      if (skipFields.includes(key)) return;
+      
       if (key === 'deadline' && updates[key]) {
         task[key] = new Date(updates[key]);
       } else {
@@ -298,7 +309,8 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
 
     const populatedTask = await Task.findById(task._id)
       .populate('assignedTo', 'name email')
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('acknowledgment.taggedAdmin', 'name email');
 
     // Log if status changed to completed
     if (oldStatus !== 'completed' && task.status === 'completed') {
@@ -324,7 +336,7 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         sendTaskAssignmentEmail(populatedTask, populatedTask.assignedTo);
       }
       
-      // If status changed to completed, notify creator/admin
+      // If status changed to completed, notify creator
       if (oldStatus !== 'completed' && populatedTask.status === 'completed') {
         if (populatedTask.createdBy && populatedTask.createdBy.email) {
           sendTaskCompletionEmail(populatedTask, populatedTask.createdBy);

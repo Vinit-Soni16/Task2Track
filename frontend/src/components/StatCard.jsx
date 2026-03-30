@@ -1,6 +1,6 @@
-'use client';
+import { memo } from 'react';
 
-export default function StatCard({ label, value, icon: Icon, color = 'slate' }) {
+const StatCard = memo(function StatCard({ label, value, icon: Icon, color = 'slate' }) {
   const colorMap = {
     slate: 'bg-slate-100 text-slate-600',
     green: 'bg-emerald-50 text-emerald-500',
@@ -34,4 +34,6 @@ export default function StatCard({ label, value, icon: Icon, color = 'slate' }) 
       </div>
     </div>
   );
-}
+});
+
+export default StatCard;

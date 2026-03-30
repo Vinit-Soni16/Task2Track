@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import api from '../lib/api';
 import { Paperclip, ExternalLink, Download } from 'lucide-react';
 
-const TaskCard = memo(function TaskCard({ task, onTaskUpdate }) {
+const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onCompleteRequest, user }) {
   const handleStatusChange = async (newStatus) => {
     try {
       const res = await api.put(`/tasks/${task._id}`, { status: newStatus });
@@ -89,6 +89,8 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate }) {
           )}
         </div>
       )}
+
+
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
         <select

@@ -1,5 +1,12 @@
 import './globals.css';
-import { AuthProvider } from '../contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata = {
   title: 'Task2Track - AI Powered Task Management',
@@ -7,14 +14,14 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://task2track.onrender.com';
+
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        {backendUrl && <link rel="preconnect" href={backendUrl} crossOrigin="anonymous" />}
       </head>
-      <body>
+      <body className="antialiased">
         <AuthProvider>
           {children}
         </AuthProvider>
