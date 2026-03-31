@@ -18,7 +18,7 @@ const statusColors = {
   pending: 'bg-slate-100 text-slate-600',
 };
 
-const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
+const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onClick, user }) {
   const handleStatusChange = useCallback(async (newStatus) => {
     try {
       const res = await api.put(`/tasks/${task._id}`, { status: newStatus });
@@ -35,7 +35,10 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
   const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${priorityColors[task.priority]} p-4 card-hover animate-fadeIn`}>
+    <div 
+      className={`bg-white rounded-xl border border-slate-200 border-l-4 ${priorityColors[task.priority]} p-4 card-hover animate-fadeIn cursor-pointer`}
+      onClick={() => onClick?.(task)}
+    >
       <div className="flex items-start justify-between mb-3">
         <h3 className={`font-medium text-sm ${task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
           {task.title}
@@ -74,7 +77,7 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
 
       {/* Attachment */}
       {task.attachment && task.attachment.type !== 'none' && (
-        <div className="mt-3 p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors">
+        <div className="mt-3 p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors" onClick={e => e.stopPropagation()}>
           {task.attachment.type === 'file' ? (
             <a
               href={`${API_BASE}${task.attachment.url}`}
@@ -98,7 +101,7 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, user }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
         <CustomSelect
           value={task.status}
           onChange={handleStatusChange}

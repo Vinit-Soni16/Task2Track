@@ -11,6 +11,7 @@ import StatCard from '../../components/StatCard';
 import TaskTable from '../../components/TaskTable';
 import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
+import TaskViewModal from '../../components/TaskViewModal';
 import CustomSelect from '../../components/CustomSelect';
 
 import { DEPARTMENTS } from '../../lib/constants';
@@ -44,6 +45,8 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -82,6 +85,7 @@ export default function DashboardPage() {
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
+    const isEdit = !!data._id;
 
     // Convert to FormData if file is present
     if (data.file) {
@@ -94,8 +98,13 @@ export default function DashboardPage() {
       payload.append('file', data.file);
     }
 
-    const res = await api.post('/tasks', payload);
-    setTasks(prev => [res.data, ...prev]);
+    if (isEdit) {
+      const res = await api.put(`/tasks/${data._id}`, payload);
+      setTasks(prev => prev.map(t => t._id === data._id ? res.data : t));
+    } else {
+      const res = await api.post('/tasks', payload);
+      setTasks(prev => [res.data, ...prev]);
+    }
   }, []);
 
   const handleTaskUpdate = useCallback((updatedTask) => {
@@ -108,6 +117,17 @@ export default function DashboardPage() {
 
   const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
+  }, []);
+
+  const handleTaskClick = useCallback((task) => {
+    setSelectedTask(task);
+    setShowViewModal(true);
+  }, []);
+
+  const handleEditFromView = useCallback((task) => {
+    setShowViewModal(false);
+    setSelectedTask(task);
+    setShowModal(true);
   }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
@@ -274,6 +294,7 @@ export default function DashboardPage() {
                   tasks={filteredTasks.slice(0, 5)}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskDelete={handleTaskDelete}
+                  onTaskClick={handleTaskClick}
                   user={user}
                 />
               )}
@@ -296,9 +317,23 @@ export default function DashboardPage() {
 
       <TaskModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setShowModal(false);
+          if (!showViewModal) setSelectedTask(null);
+        }}
         onSubmit={handleCreateTask}
         users={users}
+        task={selectedTask}
+      />
+
+      <TaskViewModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedTask(null);
+        }}
+        onEdit={handleEditFromView}
+        task={selectedTask}
       />
 
       {user?.role === 'admin' && <AIAssistant onTaskCreated={handleAITaskCreated} />}

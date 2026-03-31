@@ -8,6 +8,7 @@ import Sidebar from '../../components/Sidebar';
 import TaskTable from '../../components/TaskTable';
 import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
+import TaskViewModal from '../../components/TaskViewModal';
 import AIAssistant from '../../components/AIAssistant';
 import SkeletonBase, { TableRowSkeleton } from '../../components/Skeleton';
 import { Plus, List, LayoutGrid, Search, Filter, Activity, Flag } from 'lucide-react';
@@ -26,6 +27,8 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
 
   const fetchData = useCallback(async () => {
@@ -53,6 +56,7 @@ export default function TasksPage() {
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
+    const isEdit = !!data._id;
     
     // Check if we need to send FormData
     if (data.file) {
@@ -65,9 +69,14 @@ export default function TasksPage() {
       payload.append('file', data.file);
     }
     
-    const res = await api.post('/tasks', payload);
-    setTasks(prev => [res.data, ...prev]);
-  }, [fetchData]);
+    if (isEdit) {
+      const res = await api.put(`/tasks/${data._id}`, payload);
+      setTasks(prev => prev.map(t => t._id === data._id ? res.data : t));
+    } else {
+      const res = await api.post('/tasks', payload);
+      setTasks(prev => [res.data, ...prev]);
+    }
+  }, []);
 
   const handleTaskUpdate = useCallback((updatedTask) => {
     setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
@@ -79,6 +88,17 @@ export default function TasksPage() {
 
   const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
+  }, []);
+
+  const handleTaskClick = useCallback((task) => {
+    setSelectedTask(task);
+    setShowViewModal(true);
+  }, []);
+
+  const handleEditFromView = useCallback((task) => {
+    setShowViewModal(false);
+    setSelectedTask(task);
+    setShowModal(true);
   }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
@@ -215,7 +235,13 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <TaskTable tasks={filteredTasks} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} user={user} />
+                <TaskTable 
+                  tasks={filteredTasks} 
+                  onTaskUpdate={handleTaskUpdate} 
+                  onTaskDelete={handleTaskDelete} 
+                  onTaskClick={handleTaskClick}
+                  user={user} 
+                />
                 {filteredTasks.length === 0 && (
                   <div className="text-center py-12 bg-white">
                     <p className="text-slate-400 font-medium">No tasks found matching your criteria</p>
@@ -235,7 +261,14 @@ export default function TasksPage() {
             ) : (
               <>
                 {filteredTasks.map(task => (
-                  <TaskCard key={task._id} task={task} onTaskUpdate={handleTaskUpdate} onTaskDelete={handleTaskDelete} user={user} />
+                  <TaskCard 
+                    key={task._id} 
+                    task={task} 
+                    onTaskUpdate={handleTaskUpdate} 
+                    onTaskDelete={handleTaskDelete} 
+                    onClick={handleTaskClick}
+                    user={user} 
+                  />
                 ))}
                 {filteredTasks.length === 0 && (
                   <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 border-dashed">
@@ -250,9 +283,23 @@ export default function TasksPage() {
 
       <TaskModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={() => {
+          setShowModal(false);
+          if (!showViewModal) setSelectedTask(null);
+        }}
         onSubmit={handleCreateTask}
         users={users}
+        task={selectedTask}
+      />
+
+      <TaskViewModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedTask(null);
+        }}
+        onEdit={handleEditFromView}
+        task={selectedTask}
       />
 
       {user?.role === 'admin' && <AIAssistant onTaskCreated={handleAITaskCreated} />}

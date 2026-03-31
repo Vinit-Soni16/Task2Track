@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { X, Paperclip, Link, FileText, Trash2, Users, Building2, Flag, Activity } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
@@ -17,7 +17,7 @@ const DEPARTMENTS = [
   'Technical'
 ];
 
-export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
+export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task = null }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -33,36 +33,71 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
   const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const isEdit = !!task;
 
-    try {
-      const data = { ...formData };
-      await onSubmit(data);
-      setFormData({ 
-        title: '', 
-        description: '', 
-        assignedTo: '', 
-        deadline: '', 
-        priority: 'medium', 
+  // Sync form data when task prop changes (Edit Mode)
+  useEffect(() => {
+    if (task && isOpen) {
+      setFormData({
+        title: task.title || '',
+        description: task.description || '',
+        assignedTo: task.assignedTo?._id || task.assignedTo || '',
+        deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
+        priority: task.priority || 'medium',
+        status: task.status || 'pending',
+        attachmentType: task.attachment?.type || 'none',
+        attachmentUrl: task.attachment?.url || '',
+        file: null
+      });
+      if (task.assignedTo?.department) {
+        setSelectedDept(task.assignedTo.department);
+      }
+    } else if (!isOpen) {
+      // Reset on close
+      setFormData({
+        title: '',
+        description: '',
+        assignedTo: '',
+        deadline: '',
+        priority: 'medium',
         status: 'pending',
         attachmentType: 'none',
         attachmentUrl: '',
         file: null
       });
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setSelectedDept('All Departments');
+    }
+  }, [task, isOpen]);
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const data = { ...formData };
+      if (isEdit) data._id = task._id;
+      
+      await onSubmit(data);
       onClose();
     } catch (error) {
-      console.error('Failed to create task:', error);
+      console.error(`Failed to ${isEdit ? 'update' : 'create'} task:`, error);
     }
     setLoading(false);
-  };
+  }, [formData, isEdit, task?._id, onSubmit, onClose]);
 
   const filteredUsers = useMemo(() => {
     if (!selectedDept || selectedDept === 'All Departments') return users;
     return users.filter(u => u.department === selectedDept);
   }, [users, selectedDept]);
+
+  const handleFileChange = useCallback((e) => {
+    setFormData(prev => ({ ...prev, file: e.target.files[0] }));
+  }, []);
+
+  const removeFile = useCallback(() => {
+    setFormData(prev => ({ ...prev, file: null }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
 
   if (!isOpen) return null;
 
@@ -70,7 +105,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl animate-slideUp max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800">Create New Task</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800">{isEdit ? 'Edit Task' : 'Create New Task'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
             <X className="w-5 h-5 text-slate-400" />
           </button>
@@ -145,7 +180,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
           </div>
 
           <CustomSelect
-            label="Initial Status"
+            label="Status"
             value={formData.status}
             onChange={(val) => setFormData({...formData, status: val})}
             options={[
@@ -189,7 +224,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
                 <input
                   type="file"
                   ref={fileInputRef}
-                  onChange={(e) => setFormData({...formData, file: e.target.files[0]})}
+                  onChange={handleFileChange}
                   className="hidden"
                 />
                 {formData.file ? (
@@ -200,10 +235,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
                     </div>
                     <button 
                       type="button" 
-                      onClick={() => {
-                        setFormData({...formData, file: null});
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
+                      onClick={removeFile}
                       className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -216,8 +248,11 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
                     className="w-full py-4 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 text-sm hover:border-indigo-400 hover:text-indigo-500 transition-all flex flex-col items-center gap-1"
                   >
                     <Paperclip className="w-6 h-6" />
-                    <span>Choose a file from your device</span>
+                    <span>{isEdit && task.attachment?.url ? 'Change file' : 'Choose a file from your device'}</span>
                   </button>
+                )}
+                {isEdit && task.attachment?.type === 'file' && !formData.file && (
+                  <p className="mt-2 text-[10px] text-slate-400 italic font-medium">Currently: {task.attachment.name}</p>
                 )}
               </div>
             )}
@@ -249,7 +284,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [] }) {
               disabled={loading}
               className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-indigo-500 rounded-xl hover:bg-indigo-600 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Task'}
+              {loading ? (isEdit ? 'Updating...' : 'Creating...') : (isEdit ? 'Update Task' : 'Create Task')}
             </button>
           </div>
         </form>

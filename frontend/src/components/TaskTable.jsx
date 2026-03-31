@@ -6,7 +6,7 @@ import api from '../lib/api';
 import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
-const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
+const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, user }) {
   const [updatingId, setUpdatingId] = useState(null);
 
   const handleStatusChange = useCallback(async (taskId, newStatus) => {
@@ -41,7 +41,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
     if (task.attachment.type === 'file') {
       const fileUrl = `${API_BASE}${task.attachment.url}`;
       return (
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
           <a
             href={fileUrl}
             download={task.attachment.name}
@@ -56,7 +56,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
 
     if (task.attachment.type === 'url') {
       return (
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
           <a
             href={task.attachment.url}
             target="_blank"
@@ -97,8 +97,8 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
         </thead>
         <tbody>
           {tasks.map(task => (
-            <tr key={task._id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-              <td className="py-3 px-4">
+            <tr key={task._id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => onTaskClick?.(task)}>
+              <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
                 <button 
                   onClick={() => handleStatusChange(task._id, task.status === 'completed' ? 'pending' : 'completed')}
                   disabled={updatingId === task._id}
@@ -145,7 +145,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, user }) {
                 </span>
               </td>
               <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-              <td className="py-3 px-4 min-w-[140px]">
+              <td className="py-3 px-4 min-w-[140px]" onClick={e => e.stopPropagation()}>
                 <CustomSelect
                   value={task.status}
                   onChange={(val) => handleStatusChange(task._id, val)}
