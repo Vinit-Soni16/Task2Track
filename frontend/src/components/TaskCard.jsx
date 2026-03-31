@@ -61,9 +61,9 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onClick, user }) {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[11px] font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
-                {task.assignedTo.department && (
-                  <span className="text-[9px] text-slate-400 truncate leading-none mt-0.5">{task.assignedTo.department}</span>
-                )}
+                {task.department || task.assignedTo.department ? (
+                  <span className="text-[9px] text-slate-400 truncate leading-none mt-0.5">{task.department || task.assignedTo.department}</span>
+                ) : null}
               </div>
             </div>
           ) : (

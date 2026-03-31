@@ -73,6 +73,10 @@ const taskSchema = new mongoose.Schema({
     type: { type: String, enum: ['file', 'url', 'none'], default: 'none' },
     url: { type: String, default: '' },
     name: { type: String, default: '' }
+  },
+  department: {
+    type: String,
+    default: ''
   }
 });
 

@@ -135,7 +135,7 @@ export default function DashboardPage() {
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
     if (deptFilter !== 'all') {
-      const taskDept = task.assignedTo?.department?.trim().toLowerCase();
+      const taskDept = (task.department || task.assignedTo?.department)?.trim().toLowerCase();
       const filterDept = deptFilter.trim().toLowerCase();
       if (taskDept !== filterDept) return false;
     }
@@ -324,6 +324,7 @@ export default function DashboardPage() {
         onSubmit={handleCreateTask}
         users={users}
         task={selectedTask}
+        currentUserDepartment={user?.department}
       />
 
       <TaskViewModal

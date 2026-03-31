@@ -263,7 +263,7 @@ router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
 // POST /api/tasks - Create task (Admin only)
 router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
   try {
-    const { title, description, assignedTo, deadline, priority, status, attachmentType, attachmentUrl } = req.body;
+    const { title, description, assignedTo, deadline, priority, status, attachmentType, attachmentUrl, department } = req.body;
 
     const taskData = {
       title,
@@ -271,6 +271,7 @@ router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
       priority: priority || 'medium',
       status: status || 'pending',
       createdBy: req.user._id,
+      department: department || req.user.department || '',
       attachment: { type: 'none' }
     };
 
@@ -367,6 +368,11 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         task[key] = updates[key];
       }
     });
+
+    // Explicitly handle department update if provided
+    if (updates.department !== undefined) {
+      task.department = updates.department;
+    }
 
     await task.save();
 

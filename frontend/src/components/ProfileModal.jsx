@@ -40,8 +40,8 @@ export default function ProfileModal({ isOpen, onClose, user, onUpdate }) {
         phone: formData.phone
       };
 
-      // Only send department for members (not admin)
-      if (user?.role !== 'admin') {
+      // Include department if it exists
+      if (formData.department) {
         payload.department = formData.department;
       }
 
@@ -128,10 +128,9 @@ export default function ProfileModal({ isOpen, onClose, user, onUpdate }) {
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 ${user?.role !== 'admin' ? 'sm:grid-cols-2' : ''} gap-4`}>
-            {/* Department - only for members, NOT admin */}
-            {user?.role !== 'admin' && (
-              <div>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4`}>
+            {/* Department */}
+            <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Department</label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -147,7 +146,6 @@ export default function ProfileModal({ isOpen, onClose, user, onUpdate }) {
                   </select>
                 </div>
               </div>
-            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone</label>
               <div className="relative">

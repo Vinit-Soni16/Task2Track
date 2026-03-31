@@ -17,12 +17,13 @@ const DEPARTMENTS = [
   'Technical'
 ];
 
-export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task = null }) {
+export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task = null, currentUserDepartment = '' }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     assignedTo: '',
     deadline: '',
+    department: currentUserDepartment,
     priority: 'medium',
     status: 'pending',
     attachmentType: 'none',
@@ -49,9 +50,10 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task 
         attachmentUrl: task.attachment?.url || '',
         file: null
       });
-      if (task.assignedTo?.department) {
-        setSelectedDept(task.assignedTo.department);
+      if (task.department || task.assignedTo?.department) {
+        setSelectedDept(task.department || task.assignedTo.department);
       }
+      setFormData(prev => ({ ...prev, department: task.department || prev.department }));
     } else if (!isOpen) {
       // Reset on close
       setFormData({
@@ -65,7 +67,8 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task 
         attachmentUrl: '',
         file: null
       });
-      setSelectedDept('All Departments');
+      setSelectedDept(currentUserDepartment || 'All Departments');
+      setFormData(prev => ({ ...prev, department: currentUserDepartment }));
     }
   }, [task, isOpen]);
 

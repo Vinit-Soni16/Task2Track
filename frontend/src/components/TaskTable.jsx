@@ -127,9 +127,9 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
-                      {task.assignedTo.department && (
-                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.assignedTo.department}</span>
-                      )}
+                      {task.department || task.assignedTo.department ? (
+                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.department || task.assignedTo.department}</span>
+                      ) : null}
                     </div>
                   </div>
                 ) : (
