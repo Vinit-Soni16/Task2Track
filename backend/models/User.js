@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    enum: ['', 'Sales', 'HR', 'Shopify Development', 'Performance Marketer', 'Social Media', 'Finance', 'Graphic Designer', 'Video Editor', 'Technical'],
+    enum: ['', 'Founder', 'Vice President', 'Sales', 'HR', 'Shopify Development', 'Performance Marketer', 'Social Media', 'Finance', 'Graphic Designer', 'Video Editor', 'Technical'],
     default: ''
   },
   phone: {
