@@ -14,7 +14,7 @@ import TaskModal from '../../components/TaskModal';
 import TaskViewModal from '../../components/TaskViewModal';
 import CustomSelect from '../../components/CustomSelect';
 import DateRangePicker from '../../components/DateRangePicker';
-import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { isWithinInterval, startOfDay, endOfDay, format } from 'date-fns';
 
 import { DEPARTMENTS } from '../../lib/constants';
 

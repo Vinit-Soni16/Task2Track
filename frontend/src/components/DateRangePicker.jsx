@@ -126,10 +126,10 @@ export default function DateRangePicker({ initialRange = { start: null, end: nul
   return (
     <div className="date-range-picker-overlay animate-fadeIn" onClick={onCancel}>
       <div className="date-range-picker-container" onClick={(e) => e.stopPropagation()}>
-        <div className="picker-mobile-header sm:hidden">
-          <span className="font-bold text-slate-800">Select Dates</span>
-          <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <X size={20} className="text-slate-400" />
+        <div className="picker-mobile-header">
+          <span className="mobile-header-title">Select Dates</span>
+          <button onClick={onCancel} className="mobile-close-btn">
+            <X size={20} className="mobile-close-icon" />
           </button>
         </div>
 
@@ -160,7 +160,7 @@ export default function DateRangePicker({ initialRange = { start: null, end: nul
 
           <div className="calendars-wrapper">
             {renderMonth(baseMonth, true, false)}
-            <div className="hidden sm:block">
+            <div className="desktop-calendar-only">
               {renderMonth(nextMonth, false, true)}
             </div>
           </div>
