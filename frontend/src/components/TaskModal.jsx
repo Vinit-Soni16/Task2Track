@@ -14,7 +14,9 @@ const DEPARTMENTS = [
   'Finance',
   'Graphic Designer',
   'Video Editor',
-  'Technical'
+  'Technical',
+  'Founder',
+  'Vice President'
 ];
 
 export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task = null, currentUserDepartment = '' }) {

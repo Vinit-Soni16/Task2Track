@@ -9,6 +9,8 @@ const {
   sendOverdueToAdmin 
 } = require('./emailService');
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 function startDeadlineCron() {
   // Run every 10 minutes for accurate deadline tracking
   cron.schedule('*/10 * * * *', async () => {
@@ -41,39 +43,13 @@ function startDeadlineCron() {
           task.remindersSent = { assigned: false, hours24: false, hours12: false, hour1: false, overdue: false };
         }
 
-        // ─── 24 HOURS REMINDER ───
-        // Send when <= 24 hours left and > 12 hours left
-        if (hoursLeft <= 24 && hoursLeft > 12 && !task.remindersSent.hours24) {
-          const sent = await sendReminder24h(task, task.assignedTo);
-          if (sent) {
-            task.remindersSent.hours24 = true;
-            task.lastEmailSent = now;
-            await task.save();
-            console.log(`[CRON] 24h reminder sent for "${task.title}"`);
-          }
-        }
-
-        // ─── 12 HOURS REMINDER ───
-        // Send when <= 12 hours left and > 1 hour left
-        if (hoursLeft <= 12 && hoursLeft > 1 && !task.remindersSent.hours12) {
-          const sent = await sendReminder12h(task, task.assignedTo);
-          if (sent) {
-            task.remindersSent.hours12 = true;
-            // Also mark 24h as sent in case it was missed
-            task.remindersSent.hours24 = true;
-            task.lastEmailSent = now;
-            await task.save();
-            console.log(`[CRON] 12h reminder sent for "${task.title}"`);
-          }
-        }
-
         // ─── 1 HOUR REMINDER ───
         // Send when <= 1 hour left and > 0 (not yet overdue)
         if (hoursLeft <= 1 && hoursLeft > 0 && !task.remindersSent.hour1) {
           const sent = await sendReminder1h(task, task.assignedTo);
           if (sent) {
             task.remindersSent.hour1 = true;
-            task.remindersSent.hours24 = true;
+            task.remindersSent.hours24 = true; // Mark old ones as "handled"
             task.remindersSent.hours12 = true;
             task.lastEmailSent = now;
             await task.save();
@@ -86,10 +62,12 @@ function startDeadlineCron() {
         if (hoursLeft <= 0 && !task.remindersSent.overdue) {
           // Send to the assigned member
           const sentMember = await sendOverdueToMember(task, task.assignedTo);
+          await sleep(500); // 500ms delay
           
           // Send to all admins
           for (const admin of admins) {
             await sendOverdueToAdmin(task, task.assignedTo, admin);
+            await sleep(1000); // 1s delay between admins to avoid rate limits
           }
 
           if (sentMember) {
@@ -109,7 +87,7 @@ function startDeadlineCron() {
   });
 
   console.log('[CRON] Deadline reminder system started (checks every 10 minutes)');
-  console.log('[CRON] Reminders at: 24h, 12h, 1h before deadline + overdue notification to member & admin');
+  console.log('[CRON] Reminders at: 1h before deadline + overdue notification to member & admin');
 }
 
 module.exports = { startDeadlineCron };

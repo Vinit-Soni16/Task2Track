@@ -13,7 +13,9 @@ const DEPARTMENTS = [
   'Finance',
   'Graphic Designer',
   'Video Editor',
-  'Technical'
+  'Technical',
+  'Founder',
+  'Vice President'
 ];
 
 export default function ProfileModal({ isOpen, onClose, user, onUpdate }) {

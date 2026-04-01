@@ -11,9 +11,11 @@ import TaskModal from '../../components/TaskModal';
 import TaskViewModal from '../../components/TaskViewModal';
 import AIAssistant from '../../components/AIAssistant';
 import SkeletonBase, { TableRowSkeleton } from '../../components/Skeleton';
-import { Plus, List, LayoutGrid, Search, Filter, Activity, Flag } from 'lucide-react';
 import CustomSelect from '../../components/CustomSelect';
 import { DEPARTMENTS } from '../../lib/constants';
+import DateRangePicker from '../../components/DateRangePicker';
+import { isWithinInterval, startOfDay, endOfDay, format } from 'date-fns';
+import { Plus, List, LayoutGrid, Search, Clock, TrendingUp } from 'lucide-react';
 
 export default function TasksPage() {
   const { user, loading: authLoading } = useAuth();
@@ -30,6 +32,8 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
 
   const fetchData = useCallback(async () => {
@@ -106,6 +110,17 @@ export default function TasksPage() {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
+    // Date range filter (by deadline)
+    if (dateRange.start && dateRange.end) {
+      if (!task.deadline) return false;
+      const taskDate = new Date(task.deadline);
+      const isMatch = isWithinInterval(taskDate, { 
+        start: startOfDay(dateRange.start), 
+        end: endOfDay(dateRange.end) 
+      });
+      if (!isMatch) return false;
+    }
+
     // If a member is specifically selected, show their tasks regardless of current department filter
     if (assigneeFilter !== 'all') {
       if (task.assignedTo?._id !== assigneeFilter) return false;
@@ -117,7 +132,7 @@ export default function TasksPage() {
 
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase()) && !task.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  }), [tasks, statusFilter, priorityFilter, deptFilter, searchQuery, assigneeFilter]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter, searchQuery, assigneeFilter, dateRange]);
 
   const memberOptions = useMemo(() => [
     { value: 'all', label: 'All Members' },
@@ -144,13 +159,40 @@ export default function TasksPage() {
             <p className="text-slate-500 mt-1 text-sm">Organize, track and manage your team's work</p>
           </div>
           {user?.role === 'admin' && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              New Task
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto">
+                <button
+                  onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm w-full sm:w-auto"
+                >
+                  <Clock className="w-4 h-4 text-indigo-500" />
+                  {dateRange.start && dateRange.end 
+                    ? `${format(dateRange.start, 'MMM d')} - ${format(dateRange.end, 'MMM d')}`
+                    : 'Select Date Range'
+                  }
+                </button>
+                {isDatePickerOpen && (
+                  <div className="fixed inset-0 z-40" onClick={() => setIsDatePickerOpen(false)} />
+                )}
+                {isDatePickerOpen && (
+                  <DateRangePicker 
+                    initialRange={dateRange}
+                    onApply={(range) => {
+                      setDateRange(range);
+                      setIsDatePickerOpen(false);
+                    }}
+                    onCancel={() => setIsDatePickerOpen(false)}
+                  />
+                )}
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" />
+                New Task
+              </button>
+            </div>
           )}
         </div>
 

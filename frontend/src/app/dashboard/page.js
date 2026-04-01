@@ -13,6 +13,8 @@ import TaskCard from '../../components/TaskCard';
 import TaskModal from '../../components/TaskModal';
 import TaskViewModal from '../../components/TaskViewModal';
 import CustomSelect from '../../components/CustomSelect';
+import DateRangePicker from '../../components/DateRangePicker';
+import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
 import { DEPARTMENTS } from '../../lib/constants';
 
@@ -29,7 +31,6 @@ const CompletionRate = dynamic(() => import('../../components/CompletionRate'), 
   loading: () => <div className="h-32 bg-slate-100 animate-pulse rounded-xl" />,
   ssr: false
 });
-const CalendarWidget = dynamic(() => import('../../components/CalendarWidget'), { ssr: false });
 import SkeletonBase, { StatCardSkeleton, TableRowSkeleton } from '../../components/Skeleton';
 import { TrendingUp, CheckCircle, Clock, AlertCircle, Plus, List, LayoutGrid, AlertTriangle } from 'lucide-react';
 
@@ -48,6 +49,8 @@ export default function DashboardPage() {
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -137,6 +140,17 @@ export default function DashboardPage() {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
+    // Date range filter (by deadline)
+    if (dateRange.start && dateRange.end) {
+      if (!task.deadline) return false;
+      const taskDate = new Date(task.deadline);
+      const isMatch = isWithinInterval(taskDate, { 
+        start: startOfDay(dateRange.start), 
+        end: endOfDay(dateRange.end) 
+      });
+      if (!isMatch) return false;
+    }
+
     // If a member is specifically selected, ignore the department filter
     if (assigneeFilter !== 'all') {
       if (task.assignedTo?._id !== assigneeFilter) return false;
@@ -147,7 +161,7 @@ export default function DashboardPage() {
     }
     
     return true;
-  }), [tasks, statusFilter, priorityFilter, deptFilter, assigneeFilter]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter, assigneeFilter, dateRange]);
 
   const memberOptions = useMemo(() => [
     { value: 'all', label: 'All Members' },
@@ -180,8 +194,32 @@ export default function DashboardPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">{dashboardTitle}</h1>
             <p className="text-slate-500 mt-1 text-sm sm:text-base">Welcome back, {user?.name}</p>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <CalendarWidget tasks={tasks} />
+          <div className="flex items-center gap-3 w-full sm:w-auto relative">
+            <div className="relative">
+              <button
+                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
+              >
+                <Clock className="w-4 h-4 text-indigo-500" />
+                {dateRange.start && dateRange.end 
+                  ? `${format(dateRange.start, 'MMM d')} - ${format(dateRange.end, 'MMM d')}`
+                  : 'Select Date Range'
+                }
+              </button>
+              {isDatePickerOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setIsDatePickerOpen(false)} />
+              )}
+              {isDatePickerOpen && (
+                <DateRangePicker 
+                  initialRange={dateRange}
+                  onApply={(range) => {
+                    setDateRange(range);
+                    setIsDatePickerOpen(false);
+                  }}
+                  onCancel={() => setIsDatePickerOpen(false)}
+                />
+              )}
+            </div>
             {user?.role === 'admin' && (
               <button
                 onClick={handleOpenModal}

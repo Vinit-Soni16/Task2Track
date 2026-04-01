@@ -8,5 +8,7 @@ export const DEPARTMENTS = [
   'Finance',
   'Graphic Designer',
   'Video Editor',
-  'Technical'
+  'Technical',
+  'Founder',
+  'Vice President'
 ];
