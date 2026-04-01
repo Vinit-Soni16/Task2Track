@@ -26,6 +26,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -105,7 +106,10 @@ export default function TasksPage() {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
-    if (deptFilter !== 'all') {
+    // If a member is specifically selected, show their tasks regardless of current department filter
+    if (assigneeFilter !== 'all') {
+      if (task.assignedTo?._id !== assigneeFilter) return false;
+    } else if (deptFilter !== 'all') {
       const taskDept = (task.department || task.assignedTo?.department)?.trim().toLowerCase();
       const filterDept = deptFilter.trim().toLowerCase();
       if (taskDept !== filterDept) return false;
@@ -113,7 +117,12 @@ export default function TasksPage() {
 
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase()) && !task.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  }), [tasks, statusFilter, priorityFilter, deptFilter, searchQuery]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter, searchQuery, assigneeFilter]);
+
+  const memberOptions = useMemo(() => [
+    { value: 'all', label: 'All Members' },
+    ...users.map(u => ({ value: u._id, label: u.name }))
+  ], [users]);
 
   if (authLoading && !user) {
     return (
@@ -191,6 +200,13 @@ export default function TasksPage() {
                   value={deptFilter}
                   onChange={setDeptFilter}
                   options={DEPARTMENTS.map(d => ({ value: d, label: d === 'all' ? 'All Depts' : d }))}
+                  className="!w-40 border-none bg-transparent"
+                />
+                <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
+                <CustomSelect
+                  value={assigneeFilter}
+                  onChange={setAssigneeFilter}
+                  options={memberOptions}
                   className="!w-40 border-none bg-transparent"
                 />
               </div>

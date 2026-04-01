@@ -45,17 +45,20 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, statsRes] = await Promise.all([
+      const [tasksRes, statsRes, usersRes] = await Promise.all([
         api.get('/tasks'),
         api.get('/tasks/stats'),
+        api.get('/users'),
       ]);
       setTasks(tasksRes.data);
       setStats(statsRes.data);
+      setUsers(usersRes.data);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -134,14 +137,22 @@ export default function DashboardPage() {
     if (statusFilter !== 'all' && task.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
-    if (deptFilter !== 'all') {
+    // If a member is specifically selected, ignore the department filter
+    if (assigneeFilter !== 'all') {
+      if (task.assignedTo?._id !== assigneeFilter) return false;
+    } else if (deptFilter !== 'all') {
       const taskDept = (task.department || task.assignedTo?.department)?.trim().toLowerCase();
       const filterDept = deptFilter.trim().toLowerCase();
       if (taskDept !== filterDept) return false;
     }
     
     return true;
-  }), [tasks, statusFilter, priorityFilter, deptFilter]);
+  }), [tasks, statusFilter, priorityFilter, deptFilter, assigneeFilter]);
+
+  const memberOptions = useMemo(() => [
+    { value: 'all', label: 'All Members' },
+    ...users.map(u => ({ value: u._id, label: u.name }))
+  ], [users]);
 
   const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
@@ -266,6 +277,12 @@ export default function DashboardPage() {
                 value={deptFilter}
                 onChange={setDeptFilter}
                 options={DEPARTMENTS.map(d => ({ value: d, label: d === 'all' ? 'All Depts' : d }))}
+                className="!w-32 border-none bg-transparent"
+              />
+              <CustomSelect
+                value={assigneeFilter}
+                onChange={setAssigneeFilter}
+                options={memberOptions}
                 className="!w-32 border-none bg-transparent"
               />
               <Link
