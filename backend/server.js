@@ -69,12 +69,7 @@ async function seedAdmin() {
       }
     }
     
-    // Remove old admin as requested
-    const oldAdmin = await User.findOne({ email: 'vinit@ad2ship.com' });
-    if (oldAdmin) {
-      await User.deleteOne({ email: 'vinit@ad2ship.com' });
-      console.log('Removed old admin: vinit@ad2ship.com');
-    }
+
   } catch (error) {
     console.error('Failed to seed admins:', error);
   }

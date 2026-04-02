@@ -230,56 +230,13 @@ async function sendReminder1h(task, user) {
 
 // ─── 6. OVERDUE — sent to BOTH member AND admin ───
 async function sendOverdueToMember(task, user) {
-  try {
-    const body = `
-      <p style="color: #64748b; font-size: 15px;">Hi ${user.name},</p>
-      <p style="color: #334155; font-size: 15px; line-height: 1.6;">❌ The deadline for the following task has <strong style="color: #ef4444;">passed</strong> and you have not completed it:</p>
-      ${taskBlock(task, '#ef4444')}
-      <p style="color: #ef4444; font-size: 14px; font-weight: 600;">Your admin has been notified. Please complete this task immediately or provide an update.</p>
-    `;
-
-    await sendMailViaAPI({
-      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: `❌ Deadline Missed: ${task.title}`,
-      html: emailWrapper('#dc2626', 'Task Deadline Missed', 'Overdue Alert', body)
-    });
-    console.log(`[EMAIL] Overdue email sent to member ${user.email} for "${task.title}"`);
-    return true;
-  } catch (error) {
-    console.error(`[EMAIL] Failed overdue email to member for "${task.title}":`, error.message);
-    return false;
-  }
+  // Overdue emails are disabled as per user request
+  return true;
 }
 
 async function sendOverdueToAdmin(task, member, admin) {
-  try {
-    const body = `
-      <p style="color: #64748b; font-size: 15px;">Hi ${admin.name},</p>
-      <p style="color: #334155; font-size: 15px; line-height: 1.6;">⚠️ The following task assigned to <strong>${member.name}</strong> has <strong style="color: #ef4444;">missed its deadline</strong> and is still not completed:</p>
-      ${taskBlock(task, '#ef4444')}
-      <div style="background: #fef2f2; border: 1px solid #fee2e2; padding: 14px; border-radius: 8px; margin: 16px 0;">
-        <p style="margin: 0; color: #dc2626; font-size: 13px; font-weight: 600;">
-          👤 ${member.name} (${member.email}) has not completed this task.
-        </p>
-        <p style="margin: 6px 0 0 0; color: #991b1b; font-size: 13px;">
-          Please follow up with them to get this task completed.
-        </p>
-      </div>
-    `;
-
-    await sendMailViaAPI({
-      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
-      to: admin.email,
-      subject: `🚩 ${member.name} Missed Deadline: ${task.title}`,
-      html: emailWrapper('#dc2626', 'Team Member Missed Deadline', 'Admin Alert', body)
-    });
-    console.log(`[EMAIL] Overdue admin alert sent to ${admin.email} about ${member.name} for "${task.title}"`);
-    return true;
-  } catch (error) {
-    console.error(`[EMAIL] Failed overdue admin email for "${task.title}":`, error.message);
-    return false;
-  }
+  // Overdue emails are disabled as per user request
+  return true;
 }
 
 /**

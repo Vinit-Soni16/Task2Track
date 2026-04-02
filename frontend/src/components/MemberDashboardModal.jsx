@@ -246,6 +246,7 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
                         </p>
                         <p className="text-[10px] text-slate-400">
                           {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
+                          {task.createdBy && ` • By ${task.createdBy.name}`}
                         </p>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ml-2 shrink-0 ${

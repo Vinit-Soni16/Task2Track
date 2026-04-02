@@ -102,6 +102,16 @@ export default function TaskViewModal({ isOpen, onClose, onEdit, task }) {
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-indigo-500 shadow-sm">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Assigned By</p>
+                <p className="text-sm font-semibold text-slate-700">{task.createdBy?.name || 'Admin'}</p>
+              </div>
+            </div>
           </div>
 
           {/* Description Section */}
