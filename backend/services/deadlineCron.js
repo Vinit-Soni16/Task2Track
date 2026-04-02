@@ -60,25 +60,26 @@ function startDeadlineCron() {
         // ─── OVERDUE — deadline has passed ───
         // Send to BOTH member AND admin
         if (hoursLeft <= 0 && !task.remindersSent.overdue) {
-          // Send to the assigned member
+          // [PAUSED] Send to the assigned member and admin(s)
+          /*
           const sentMember = await sendOverdueToMember(task, task.assignedTo);
-          await sleep(500); // 500ms delay
+          await sleep(500); 
           
-          // Send to all admins
           for (const admin of admins) {
             await sendOverdueToAdmin(task, task.assignedTo, admin);
-            await sleep(1000); // 1s delay between admins to avoid rate limits
+            await sleep(1000); 
           }
+          */
 
-          if (sentMember) {
-            task.remindersSent.overdue = true;
-            task.remindersSent.hours24 = true;
-            task.remindersSent.hours12 = true;
-            task.remindersSent.hour1 = true;
-            task.lastEmailSent = now;
-            await task.save();
-            console.log(`[CRON] Overdue emails sent for "${task.title}" to member + admin(s)`);
-          }
+          // Mark as handled even if emails are not sent, to prevent repeated cron entry
+          // If you want to resume later, you might want to reset these flags
+          task.remindersSent.overdue = true;
+          task.remindersSent.hours24 = true;
+          task.remindersSent.hours12 = true;
+          task.remindersSent.hour1 = true;
+          task.lastEmailSent = now;
+          await task.save();
+          console.log(`[CRON] Overdue emails PAUSED for "${task.title}" (marked as handled)`);
         }
       }
     } catch (error) {
