@@ -89,7 +89,8 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
           <tr className="border-b border-slate-200">
             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-8"></th>
             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Task</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assignee</th>
+            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned To</th>
+            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned By</th>
             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Deadline</th>
             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Priority</th>
             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
@@ -127,13 +128,30 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
-                      {task.department || task.assignedTo.department ? (
-                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.department || task.assignedTo.department}</span>
+                      {task.assignedTo.department ? (
+                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.assignedTo.department}</span>
                       ) : null}
                     </div>
                   </div>
                 ) : (
                   <span className="text-xs text-slate-400">Unassigned</span>
+                )}
+              </td>
+              <td className="py-3 px-4">
+                {task.createdBy ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
+                      {task.createdBy.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold text-slate-700 truncate">{task.createdBy.name}</span>
+                      {task.department || task.createdBy.department ? (
+                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.department || task.createdBy.department}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400">-</span>
                 )}
               </td>
               <td className="py-3 px-4">
