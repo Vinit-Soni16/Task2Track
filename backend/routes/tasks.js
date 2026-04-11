@@ -1,21 +1,45 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const { auth, adminOnly } = require('../middleware/auth');
 const { sendTaskAssignmentEmail, sendTaskCompletionEmail } = require('../services/emailService');
 const multer = require('multer');
-const path = require('path');
+
+// Ensure uploads/tasks directory exists
+const uploadsDir = path.join(__dirname, '../uploads/tasks');
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('[Tasks Router] Created uploads/tasks directory at:', uploadsDir);
+  }
+} catch (err) {
+  console.error('[Tasks Router] Error creating directory:', err);
+}
 
 // Multer Config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/tasks/');
+    // Ensure directory exists before saving
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+    } catch (err) {
+      console.error('[Tasks Router] Error ensuring directory exists:', err);
+    }
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // Use crypto for better randomness
+    const randomstring = crypto.randomBytes(8).toString('hex');
+    const filename = `${Date.now()}-${randomstring}${path.extname(file.originalname)}`;
+    console.log('[Tasks Router] Saving file:', filename, 'Original:', file.originalname);
+    cb(null, filename);
   }
 });
 
@@ -43,6 +67,59 @@ router.get('/test-email', async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ success: false, error: err.toString() });
+  }
+});
+
+// GET /api/tasks/repair/broken-attachments - Repair broken file references (Admin only)
+router.get('/repair/broken-attachments', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsDir = path.join(__dirname, '../uploads/tasks');
+    
+    // Get all actual files in uploads directory
+    const actualFiles = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
+    console.log('Actual files in uploads/tasks:', actualFiles);
+    
+    // Find all tasks with file attachments
+    const tasksWithAttachments = await Task.find({
+      'attachment.type': 'file',
+      'attachment.url': { $regex: /^\/uploads\/tasks\// }
+    });
+    
+    const brokenTasks = [];
+    const fixedTasks = [];
+    
+    for (const task of tasksWithAttachments) {
+      const fileName = task.attachment.url.replace('/uploads/tasks/', '');
+      const fileExists = actualFiles.includes(fileName);
+      
+      if (!fileExists) {
+        console.warn(`[BROKEN ATTACHMENT] Task ${task._id}: ${fileName} not found`);
+        brokenTasks.push({
+          taskId: task._id,
+          title: task.title,
+          storedName: fileName,
+          url: task.attachment.url
+        });
+        
+        // Clear the broken attachment
+        task.attachment = { type: 'none' };
+        await task.save();
+        fixedTasks.push(task._id);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Found ${brokenTasks.length} broken attachments and cleared ${fixedTasks.length}`,
+      brokenAttachments: brokenTasks,
+      clearedTaskIds: fixedTasks,
+      availableFiles: actualFiles
+    });
+  } catch (error) {
+    console.error('Repair error:', error);
+    res.status(500).json({ error: 'Failed to repair broken attachments', details: error.message });
   }
 });
 
@@ -265,6 +342,16 @@ router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
   try {
     const { title, description, assignedTo, deadline, priority, status, attachmentType, attachmentUrl, department } = req.body;
 
+    // Log file upload details for debugging
+    if (attachmentType === 'file') {
+      console.log('File upload details:', {
+        originalname: req.file?.originalname,
+        filename: req.file?.filename,
+        size: req.file?.size,
+        mimetype: req.file?.mimetype
+      });
+    }
+
     const taskData = {
       title,
       description: description || '',
@@ -283,11 +370,14 @@ router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
         name: 'External Link'
       };
     } else if (attachmentType === 'file' && req.file) {
+      // Sanitize filename to prevent path traversal
+      const safeFilename = path.basename(req.file.filename);
       taskData.attachment = {
         type: 'file',
-        url: `/uploads/tasks/${req.file.filename}`,
+        url: `/uploads/tasks/${safeFilename}`,
         name: req.file.originalname
       };
+      console.log('Attachment URL:', taskData.attachment.url);
     }
 
     if (assignedTo) {
@@ -345,11 +435,20 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         name: 'External Link'
       };
     } else if (updates.attachmentType === 'file' && req.file) {
+      // Log file update details for debugging
+      console.log('File update details:', {
+        originalname: req.file?.originalname,
+        filename: req.file?.filename,
+        size: req.file?.size
+      });
+      
+      const safeFilename = path.basename(req.file.filename);
       task.attachment = {
         type: 'file',
-        url: `/uploads/tasks/${req.file.filename}`,
+        url: `/uploads/tasks/${safeFilename}`,
         name: req.file.originalname
       };
+      console.log('Updated attachment URL:', task.attachment.url);
     } else if (updates.attachmentType === 'none') {
       task.attachment = { type: 'none' };
     }

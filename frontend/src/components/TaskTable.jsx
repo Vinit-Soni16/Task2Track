@@ -35,8 +35,11 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
     );
   }, []);
 
-  const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
-
+const API_BASE = useMemo(() => {
+  return process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+    : 'http://localhost:4000';
+}, []);
   const renderAttachment = useCallback((task) => {
     if (!task.attachment || task.attachment.type === 'none') return null;
 
@@ -165,7 +168,7 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
                 </span>
               </td>
               <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-              <td className="py-3 px-4 min-w-[140px]" onClick={e => e.stopPropagation()}>
+              <td className="py-3 px-4 min-w-35" onClick={e => e.stopPropagation()}>
                 <CustomSelect
                   value={task.status}
                   onChange={(val) => handleStatusChange(task._id, val)}

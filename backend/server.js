@@ -1,7 +1,9 @@
 const express = require('express');
+const path = require('path');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const dns = require('dns');
 
 dotenv.config();
 
@@ -15,9 +17,29 @@ const { startDeadlineCron } = require('./services/deadlineCron');
 const app = express();
 
 // Middleware 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+
+// Ensure uploads directory exists
+const fs = require('fs');
+const uploadsPath = path.join(__dirname, 'uploads');
+const uploadTasksPath = path.join(uploadsPath, 'tasks');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('Created uploads directory');
+}
+if (!fs.existsSync(uploadTasksPath)) {
+  fs.mkdirSync(uploadTasksPath, { recursive: true });
+  console.log('Created uploads/tasks directory');
+}
+
+// Serve uploads with proper headers
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -79,7 +101,20 @@ async function seedAdmin() {
 const PORT = process.env.PORT || 4000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(MONGODB_URI)
+if (MONGODB_URI?.startsWith('mongodb+srv://')) {
+  const dnsServers = (process.env.MONGODB_DNS_SERVERS || '8.8.8.8,1.1.1.1')
+    .split(',')
+    .map((server) => server.trim())
+    .filter(Boolean);
+
+  if (dnsServers.length > 0) {
+    // Atlas SRV lookups can fail with some local routers/ISPs, so use explicit resolvers.
+    dns.setServers(dnsServers);
+    console.log('Using DNS servers for MongoDB SRV lookup:', dnsServers.join(', '));
+  }
+}
+
+mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 })
   .then(async () => {
     console.log('Connected to MongoDB');
     

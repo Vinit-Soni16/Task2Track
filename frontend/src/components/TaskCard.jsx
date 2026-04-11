@@ -32,8 +32,11 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onClick, user }) {
     task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
   , [task.deadline, task.status]);
 
-  const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
-
+const API_BASE = useMemo(() => {
+  return process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+    : 'http://localhost:4000';
+}, []);
   return (
     <div 
       className={`bg-white rounded-xl border border-slate-200 border-l-4 ${priorityColors[task.priority]} p-4 card-hover animate-fadeIn cursor-pointer`}
