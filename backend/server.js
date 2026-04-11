@@ -42,6 +42,7 @@ if (!fs.existsSync(uploadTasksPath)) {
 // Serve uploads with proper headers
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
