@@ -84,6 +84,7 @@ export default function AdminPage() {
     return best;
   }, null), [analytics]);
 
+  
   const needsAttention = useMemo(() => analytics.reduce((worst, current) => {
     if (current.totalTasks === 0) return worst;
     if (!worst || current.overdue > worst.overdue) return current;
