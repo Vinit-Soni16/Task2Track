@@ -33,6 +33,7 @@ if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
   console.log('Created uploads directory');
 }
+
 if (!fs.existsSync(uploadTasksPath)) {
   fs.mkdirSync(uploadTasksPath, { recursive: true });
   console.log('Created uploads/tasks directory');
