@@ -12,7 +12,7 @@ const multer = require('multer');
 
 // Ensure uploads/tasks directory exists
 const uploadsDir = path.join(__dirname, '../uploads/tasks');
-try {
+try { 
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
     console.log('[Tasks Router] Created uploads/tasks directory at:', uploadsDir);
