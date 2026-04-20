@@ -40,7 +40,7 @@ export default function TeamDistribution({ data }) {
             tick={{ fontSize: 12, fill: '#64748b' }}
             axisLine={false}
             tickLine={false}
-            width={80}
+            width={120}
           />
           <Tooltip
             contentStyle={{

@@ -6,6 +6,11 @@ import api from '../lib/api';
 import { Paperclip, ExternalLink, Download } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
+const SUPER_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
 const priorityColors = {
   high: 'border-l-red-500 bg-red-50/30',
   medium: 'border-l-amber-500 bg-amber-50/30',
@@ -20,13 +25,22 @@ const statusColors = {
 
 const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onClick, user }) {
   const handleStatusChange = useCallback(async (newStatus) => {
+    const isCreator = (task.createdBy?._id || task.createdBy) === (user?._id || user);
+    const isAssignee = (task.assignedTo?._id || task.assignedTo) === (user?._id || user);
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user?.email);
+
+    if (!isCreator && !isAssignee && !isSuperAdmin) {
+      alert('Permission Denied: Only the creator, assignee, or a Super Admin can update task status.');
+      return;
+    }
+
     try {
       const res = await api.put(`/tasks/${task._id}`, { status: newStatus });
       onTaskUpdate(res.data);
     } catch (error) {
       console.error('Failed to update task:', error);
     }
-  }, [task._id, onTaskUpdate]);
+  }, [task._id, task.createdBy?._id, task.assignedTo?._id, user?._id, onTaskUpdate]);
 
   const isOverdue = useMemo(() => 
     task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
@@ -46,9 +60,21 @@ const API_BASE = useMemo(() => {
         <h3 className={`font-medium text-sm ${task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
           {task.title}
         </h3>
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${statusColors[task.status]}`}>
-          {task.status.replace('-', ' ')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${statusColors[task.status]}`}>
+            {task.status.replace('-', ' ')}
+          </span>
+          {( (task.createdBy?._id || task.createdBy) === (user?._id || user) || SUPER_ADMIN_EMAILS.includes(user?.email) ) && (
+            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button 
+                onClick={(e) => { e.stopPropagation(); onClick?.(task); }}
+                className="p-1 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       
       {task.description && (
@@ -63,10 +89,22 @@ const API_BASE = useMemo(() => {
                 {task.assignedTo.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
+                  {task.assignedTo.role === 'admin' && SUPER_ADMIN_EMAILS.includes(task.assignedTo.email) && (
+                    <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase tracking-tighter leading-none">Admin</span>
+                  )}
+                </div>
                 <span className="text-[9px] text-slate-400 truncate leading-none mt-0.5">
                   {task.department || task.assignedTo.department}
-                  {task.createdBy && ` • By ${task.createdBy.name}`}
+                  {task.createdBy && (
+                    <span className="flex items-center gap-1 mt-1">
+                      By {task.createdBy.name}
+                      {task.createdBy.role === 'admin' && SUPER_ADMIN_EMAILS.includes(task.createdBy.email) && (
+                        <span className="text-[7px] font-bold text-indigo-400 uppercase">Admin</span>
+                      )}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>

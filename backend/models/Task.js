@@ -8,18 +8,18 @@ const taskSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    default: '',
+    required: [true, 'Task description is required'],
     trim: true
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null,
+    required: [true, 'Assigned user is required'],
     index: true
   },
   deadline: {
     type: Date,
-    default: null
+    required: [true, 'Deadline is required']
   },
   priority: {
     type: String,

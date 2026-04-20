@@ -137,7 +137,15 @@ export default function DashboardPage() {
   }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
-    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+    // Status filter
+    if (statusFilter === 'overdue') {
+      const now = new Date();
+      const isOverdue = task.status !== 'completed' && task.deadline && new Date(task.deadline) < now;
+      if (!isOverdue) return false;
+    } else if (statusFilter !== 'all' && task.status !== statusFilter) {
+      return false;
+    }
+
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
     // Date range filter (by deadline)
@@ -171,9 +179,19 @@ export default function DashboardPage() {
   const importantTasks = useMemo(() => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'), [tasks]);
 
   // Dashboard title based on role
-  const dashboardTitle = useMemo(() => user?.role === 'admin'
-    ? 'Admin Dashboard'
-    : `${user?.name || 'My'}'s Dashboard`, [user]);
+  const dashboardTitle = useMemo(() => {
+    if (!user) return 'Dashboard';
+    
+    const SUPER_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (user.role === 'admin') {
+      return SUPER_ADMIN_EMAILS.includes(user.email) ? 'Admin Dashboard' : 'Manager Dashboard';
+    }
+    return 'Member Dashboard';
+  }, [user]);
 
   if (authLoading && !user) {
     return (
@@ -243,10 +261,38 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-              <StatCard label="Total Tasks" value={stats?.total || 0} icon={TrendingUp} color="slate" />
-              <StatCard label="Completed" value={stats?.completed || 0} icon={CheckCircle} color="green" />
-              <StatCard label="In Progress" value={stats?.inProgress || 0} icon={Clock} color="blue" />
-              <StatCard label="Overdue" value={stats?.overdue || 0} icon={AlertCircle} color="red" />
+              <StatCard 
+                label="Total Tasks" 
+                value={stats?.total || 0} 
+                icon={TrendingUp} 
+                color="slate" 
+                clickable 
+                onClick={() => router.push('/tasks')} 
+              />
+              <StatCard 
+                label="Completed" 
+                value={stats?.completed || 0} 
+                icon={CheckCircle} 
+                color="green" 
+                clickable 
+                onClick={() => router.push('/tasks?status=completed')} 
+              />
+              <StatCard 
+                label="In Progress" 
+                value={stats?.inProgress || 0} 
+                icon={Clock} 
+                color="blue" 
+                clickable 
+                onClick={() => router.push('/tasks?status=in-progress')} 
+              />
+              <StatCard 
+                label="Overdue" 
+                value={stats?.overdue || 0} 
+                icon={AlertCircle} 
+                color="red" 
+                clickable 
+                onClick={() => router.push('/tasks?status=overdue')} 
+              />
             </>
           )}
         </div>
@@ -307,7 +353,8 @@ export default function DashboardPage() {
                   { value: 'all', label: 'All Status' },
                   { value: 'pending', label: 'Pending' },
                   { value: 'in-progress', label: 'In Progress' },
-                  { value: 'completed', label: 'Completed' }
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'overdue', label: 'Overdue' }
                 ]}
                 className="!w-32 border-none bg-transparent"
               />

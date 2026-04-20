@@ -7,6 +7,11 @@ import ProfileModal from './ProfileModal';
 import { LayoutDashboard, Users, LogOut, CheckSquare, Menu, X } from 'lucide-react';
 import { useState, memo } from 'react';
 
+const SUPER_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
 const Sidebar = memo(function Sidebar() {
   const pathname = usePathname();
   const { user, logout, updateUser } = useAuth();
@@ -17,10 +22,12 @@ const Sidebar = memo(function Sidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Tasks', href: '/tasks', icon: CheckSquare },
     { name: 'Team', href: '/admin', icon: Users, adminOnly: true },
+    { name: 'Invitations', href: '/invitations', icon: Users, superAdminOnly: true },
   ];
 
   const filteredItems = navItems.filter(item => {
     if (item.adminOnly && user?.role !== 'admin') return false;
+    if (item.superAdminOnly && !SUPER_ADMIN_EMAILS.includes(user?.email)) return false;
     return true;
   });
 
@@ -81,7 +88,12 @@ const Sidebar = memo(function Sidebar() {
             >
               {user?.name || 'User'}
             </button>
-            <p className="text-xs text-slate-400 capitalize">{user?.role || 'Member'}</p>
+            <p className="text-xs text-slate-400">
+              {user?.role === 'admin' 
+                ? (SUPER_ADMIN_EMAILS.includes(user?.email) ? 'Admin' : 'Manager') 
+                : 'Member'
+              }
+            </p>
           </div>
           <button 
             onClick={logout}

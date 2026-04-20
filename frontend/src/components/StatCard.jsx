@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-const StatCard = memo(function StatCard({ label, value, icon: Icon, color = 'slate' }) {
+const StatCard = memo(function StatCard({ label, value, icon: Icon, color = 'slate', onClick, clickable = false }) {
   const colorMap = {
     slate: 'bg-slate-100 text-slate-600',
     green: 'bg-emerald-50 text-emerald-500',
@@ -20,7 +20,12 @@ const StatCard = memo(function StatCard({ label, value, icon: Icon, color = 'sla
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 card-hover animate-fadeIn">
+    <div 
+      onClick={onClick}
+      className={`bg-white rounded-xl border border-slate-200 p-5 animate-fadeIn transition-all duration-200 ${
+        clickable ? 'cursor-pointer hover:shadow-md hover:border-slate-300 active:scale-95' : 'card-hover'
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{label}</p>

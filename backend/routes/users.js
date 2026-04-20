@@ -1,9 +1,47 @@
 const express = require('express');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const { auth, adminOnly } = require('../middleware/auth');
+const { auth, adminOnly, superAdminOnly } = require('../middleware/auth');
 
 const router = express.Router();
+
+// ... existing routes ...
+
+// PUT /api/users/:id/role - Update user role (Super Admin only)
+router.put('/:id/role', auth, superAdminOnly, async (req, res) => {
+  try {
+    const { role } = req.body;
+    
+    if (!['admin', 'member'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent demoting super admins
+    const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+      
+    if (SUPER_ADMIN_EMAILS.includes(user.email)) {
+      return res.status(403).json({ error: 'Cannot change role of a Super Admin' });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({ message: `User role updated to ${role}`, user: { _id: user._id, role: user.role } });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+
 
 // GET /api/users - Get all users (for assignment dropdowns)
 router.get('/', auth, async (req, res) => {
@@ -63,15 +101,8 @@ router.get('/analytics', auth, adminOnly, async (req, res) => {
   try {
     const users = await User.find().select('-password');
     
-    // Filter tasks based on strict admin permissions
-    const taskQuery = { 
-      $or: [
-        { status: { $ne: 'completed' }, createdBy: req.user._id }, 
-        { status: 'completed', 'acknowledgment.taggedAdmin': req.user._id },
-        { status: 'completed', 'acknowledgment.taggedAdmin': null, createdBy: req.user._id }
-      ] 
-    };
-    const tasks = await Task.find(taskQuery).populate('assignedTo', 'name email');
+    // For admin analytics, we want to see all tasks to get a complete team overview
+    const tasks = await Task.find().populate('assignedTo', 'name email');
 
     const analytics = users.map(user => {
       const userTasks = tasks.filter(t => 

@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
+const SUPER_ADMIN_EMAILS = ['deepak@ad2ship.com', 'gaurishankar@ad2ship.com', 'mayank@ad2ship.com'];
+
 export default function TaskViewModal({ isOpen, onClose, onEdit, task }) {
   const { user: currentUser } = useAuth();
   const API_BASE = useMemo(() => process.env.NEXT_PUBLIC_API_URL?.replace('/api', ''), []);
@@ -50,7 +52,7 @@ export default function TaskViewModal({ isOpen, onClose, onEdit, task }) {
               </h2>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {isAdmin && (
+              {(task.createdBy?._id === currentUser?._id || SUPER_ADMIN_EMAILS.includes(currentUser?.email)) && (
                 <button 
                   onClick={handleEdit}
                   className="p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all shadow-sm group relative"

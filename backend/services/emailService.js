@@ -270,6 +270,39 @@ async function sendOTPEmail(user, otp) {
   }
 }
 
+// ─── 7. INVITATION EMAIL — sent when super admin invites new admin ───
+async function sendInvitationEmail(user, inviterName) {
+  try {
+    const body = `
+      <div style="background-color: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <p style="color: #64748b; font-size: 15px;">Hi ${user.name},</p>
+        <p style="color: #334155; font-size: 15px; line-height: 1.6;"><strong>${inviterName}</strong> has invited you to join <strong>Task2Track</strong> as an Administrator.</p>
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b;">Your temporary login credentials are:</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #1e293b;"><strong>Email:</strong> ${user.email}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #1e293b;"><strong>Password:</strong> Password@123</p>
+        </div>
+        <p style="color: #475569; font-size: 14px;">For security, please login and change your password immediately from your profile settings.</p>
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${FRONTEND_URL}/login" style="background: #6366f1; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 14px;">Login to Task2Track</a>
+        </div>
+      </div>
+    `;
+
+    await sendMailViaAPI({
+      from: `"Task2Track" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: `👋 You've been invited to Task2Track as Admin`,
+      html: emailWrapper('#6366f1', 'Welcome to Task2Track', 'Invitation', body)
+    });
+
+    return true;
+  } catch (error) {
+    console.error('[EMAIL ERROR] Failed invitation email:', error);
+    return false;
+  }
+}
+
 module.exports = { 
   sendTaskAssignmentEmail, 
   sendTaskCompletionEmail,
@@ -278,5 +311,6 @@ module.exports = {
   sendReminder1h,
   sendOverdueToMember,
   sendOverdueToAdmin,
-  sendOTPEmail
+  sendOTPEmail,
+  sendInvitationEmail
 };

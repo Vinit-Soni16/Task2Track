@@ -4,11 +4,17 @@ import { useState, useEffect } from 'react';
 import { X, TrendingUp, CheckCircle, Clock, AlertCircle, Building2 } from 'lucide-react';
 import api from '../lib/api';
 
+const SUPER_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
 export default function MemberDashboardModal({ isOpen, onClose, member }) {
   const [stats, setStats] = useState(null);
   const [memberTasks, setMemberTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     if (isOpen && member?._id) {
@@ -19,6 +25,7 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
       setMemberTasks([]);
       setLoading(true);
       setError('');
+      setStatusFilter('all');
     };
   }, [isOpen, member?._id]);
 
@@ -28,13 +35,10 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
     try {
       const [statsRes, tasksRes] = await Promise.all([
         api.get(`/tasks/stats/${member._id}`),
-        api.get('/tasks')
+        api.get(`/tasks?userId=${member._id}`)
       ]);
       setStats(statsRes.data);
-      const filtered = tasksRes.data.filter(t => 
-        t.assignedTo && (t.assignedTo._id === member._id || t.assignedTo === member._id)
-      );
-      setMemberTasks(filtered);
+      setMemberTasks(tasksRes.data);
     } catch (err) {
       console.error('Failed to fetch member data:', err);
       setError('Failed to load member data');
@@ -43,6 +47,19 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
   };
 
   if (!isOpen || !member) return null;
+
+  const filteredTasks = memberTasks.filter(t => {
+    const isAssigned = t.assignedTo && (t.assignedTo._id === member._id || t.assignedTo === member._id);
+    if (!isAssigned) return false;
+
+    if (statusFilter === 'overdue') {
+      const now = new Date();
+      return t.status !== 'completed' && t.deadline && new Date(t.deadline) < now;
+    }
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+
+    return true;
+  });
 
   const pending = stats?.pending || 0;
   const inProgress = stats?.inProgress || 0;
@@ -63,7 +80,16 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
               {member.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{member.name}&apos;s Dashboard</h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{member.name}&apos;s Dashboard</h2>
+                {member.role === 'admin' && (
+                  SUPER_ADMIN_EMAILS.includes(member.email) ? (
+                    <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase shrink-0">Admin</span>
+                  ) : (
+                    <span className="px-1 py-0.5 bg-amber-100 text-amber-600 text-[8px] font-bold rounded uppercase shrink-0">Manager</span>
+                  )
+                )}
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-slate-400">{member.email}</span>
                 {member.department && (
@@ -75,9 +101,21 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors shrink-0">
-            <X className="w-5 h-5 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                onClose();
+                window.location.href = `/tasks?assignee=${member._id}`;
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-semibold hover:bg-indigo-100 transition-colors"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              View Full List
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors shrink-0">
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -98,7 +136,10 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
           <div className="p-4 sm:p-6 space-y-4">
             {/* Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+              <button 
+                onClick={() => setStatusFilter('all')}
+                className={`text-left bg-white rounded-xl border p-3 sm:p-4 transition-all ${statusFilter === 'all' ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200 hover:border-slate-300'}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total</p>
@@ -108,8 +149,11 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
                     <TrendingUp className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+              </button>
+              <button 
+                onClick={() => setStatusFilter('completed')}
+                className={`text-left bg-white rounded-xl border p-3 sm:p-4 transition-all ${statusFilter === 'completed' ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Done</p>
@@ -119,8 +163,11 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
                     <CheckCircle className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+              </button>
+              <button 
+                onClick={() => setStatusFilter('in-progress')}
+                className={`text-left bg-white rounded-xl border p-3 sm:p-4 transition-all ${statusFilter === 'in-progress' ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300'}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">In Progress</p>
@@ -130,8 +177,11 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
                     <Clock className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+              </button>
+              <button 
+                onClick={() => setStatusFilter('overdue')}
+                className={`text-left bg-white rounded-xl border p-3 sm:p-4 transition-all ${statusFilter === 'overdue' ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200 hover:border-slate-300'}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Overdue</p>
@@ -141,7 +191,7 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
                     <AlertCircle className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Task Ratio + Completion Rate side by side */}
@@ -233,12 +283,19 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
 
             {/* Recent Tasks */}
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <h3 className="font-bold text-slate-800 text-sm mb-3">Recent Tasks</h3>
-              {memberTasks.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">No tasks assigned</p>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-slate-800 text-sm">Tasks {statusFilter !== 'all' && `(${statusFilter})`}</h3>
+                {statusFilter !== 'all' && (
+                  <button onClick={() => setStatusFilter('all')} className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700">
+                    Show All
+                  </button>
+                )}
+              </div>
+              {filteredTasks.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No tasks found</p>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {memberTasks.slice(0, 10).map(task => (
+                  {filteredTasks.slice(0, 10).map(task => (
                     <div key={task._id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 transition-colors">
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-700'}`}>

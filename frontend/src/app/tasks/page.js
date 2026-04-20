@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/api';
 import Sidebar from '../../components/Sidebar';
@@ -17,9 +17,10 @@ import DateRangePicker from '../../components/DateRangePicker';
 import { isWithinInterval, startOfDay, endOfDay, format } from 'date-fns';
 import { Plus, List, LayoutGrid, Search, Clock, TrendingUp } from 'lucide-react';
 
-export default function TasksPage() {
+function TasksPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +35,6 @@ export default function TasksPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-
 
   const fetchData = useCallback(async () => {
     try {
@@ -58,6 +58,17 @@ export default function TasksPage() {
     }
     fetchData();
   }, [user?._id, authLoading, router, fetchData]);
+
+  useEffect(() => {
+    // Check for filters in URL
+    const statusParam = searchParams.get('status');
+    const assigneeParam = searchParams.get('assignee');
+    const deptParam = searchParams.get('dept');
+
+    if (statusParam) setStatusFilter(statusParam);
+    if (assigneeParam) setAssigneeFilter(assigneeParam);
+    if (deptParam) setDeptFilter(deptParam);
+  }, [searchParams]);
 
   const handleCreateTask = useCallback(async (data) => {
     let payload = data;
@@ -85,11 +96,8 @@ export default function TasksPage() {
 
   const handleTaskUpdate = useCallback((updatedTask) => {
     setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
-  }, [fetchData]);
-
-  const handleTaskDelete = useCallback((taskId) => {
-    setTasks(prev => prev.filter(t => t._id !== taskId));
   }, []);
+
 
   const handleAITaskCreated = useCallback((task) => {
     setTasks(prev => [task, ...prev]);
@@ -107,7 +115,15 @@ export default function TasksPage() {
   }, []);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
-    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+    // Status filter
+    if (statusFilter === 'overdue') {
+      const now = new Date();
+      const isOverdue = task.status !== 'completed' && task.deadline && new Date(task.deadline) < now;
+      if (!isOverdue) return false;
+    } else if (statusFilter !== 'all' && task.status !== statusFilter) {
+      return false;
+    }
+
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     
     // Date range filter (by deadline)
@@ -221,7 +237,8 @@ export default function TasksPage() {
                     { value: 'all', label: 'All Status' },
                     { value: 'pending', label: 'Pending' },
                     { value: 'in-progress', label: 'In Progress' },
-                    { value: 'completed', label: 'Completed' }
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'overdue', label: 'Overdue' }
                   ]}
                   className="!w-40 border-none bg-transparent"
                 />
@@ -296,7 +313,6 @@ export default function TasksPage() {
                 <TaskTable 
                   tasks={filteredTasks} 
                   onTaskUpdate={handleTaskUpdate} 
-                  onTaskDelete={handleTaskDelete} 
                   onTaskClick={handleTaskClick}
                   user={user} 
                 />
@@ -323,7 +339,6 @@ export default function TasksPage() {
                     key={task._id} 
                     task={task} 
                     onTaskUpdate={handleTaskUpdate} 
-                    onTaskDelete={handleTaskDelete} 
                     onClick={handleTaskClick}
                     user={user} 
                   />
@@ -363,5 +378,13 @@ export default function TasksPage() {
 
       {user?.role === 'admin' && <AIAssistant onTaskCreated={handleAITaskCreated} />}
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TasksPageContent />
+    </Suspense>
   );
 }

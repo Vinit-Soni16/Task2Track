@@ -2,10 +2,62 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
-const { auth } = require('../middleware/auth');
-const { sendOTPEmail } = require('../services/emailService');
+const { auth, superAdminOnly } = require('../middleware/auth');
+const { sendOTPEmail, sendInvitationEmail } = require('../services/emailService');
 
 const router = express.Router();
+
+// ─── INVITATION FLOW (Super Admin Only) ───
+router.post('/invite', auth, superAdminOnly, async (req, res) => {
+  try {
+    const { name, email, department } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and Email are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    // Create user with default password
+    const user = new User({
+      name,
+      email: email.toLowerCase(),
+      password: 'Password@123', // Default password
+      role: 'admin',
+      department: department || ''
+    });
+
+    await user.save();
+
+    // Log activity
+    await ActivityLog.create({
+      user: req.user._id,
+      action: 'user_invited',
+      details: `Invited ${user.name} (${user.email}) as Admin`
+    });
+
+    // Send Invitation Email
+    const emailSent = await sendInvitationEmail(user, req.user.name);
+
+    res.status(201).json({ 
+      message: 'Invitation sent successfully', 
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department
+      }
+    });
+  } catch (error) {
+    console.error('Invite error:', error);
+    res.status(500).json({ error: 'Server error during invitation' });
+  }
+});
 
 // ─── FORGOT PASSWORD FLOW ───
 

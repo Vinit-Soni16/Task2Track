@@ -1,12 +1,118 @@
 'use client';
 
-
-
 import { useState, memo, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import api from '../lib/api';
-import { CheckSquare, Square, Paperclip, ExternalLink, Download } from 'lucide-react';
+import { CheckSquare, Square, ExternalLink, Download } from 'lucide-react';
 import CustomSelect from './CustomSelect';
+
+const SUPER_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
+const TaskRow = memo(({ task, onTaskUpdate, onTaskClick, updatingId, handleStatusChange, renderAttachment, getPriorityBadge, currentUser }) => {
+  const isCreator = (task.createdBy?._id || task.createdBy) === (currentUser?._id || currentUser);
+  const isAssignee = (task.assignedTo?._id || task.assignedTo) === (currentUser?._id || currentUser);
+  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser?.email);
+
+  return (
+    <tr 
+      className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group cursor-pointer"
+      onClick={() => onTaskClick?.(task)}
+    >
+      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+        <button 
+          onClick={() => handleStatusChange(task._id, task.status === 'completed' ? 'pending' : 'completed')}
+          disabled={updatingId === task._id || (!isCreator && !isAssignee && !isSuperAdmin)}
+          className={(updatingId === task._id || (!isCreator && !isAssignee && !isSuperAdmin)) ? 'opacity-50 cursor-not-allowed' : ''}
+        >
+          {task.status === 'completed' ? (
+            <CheckSquare className="w-5 h-5 text-indigo-500" />
+          ) : (
+            <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />
+          )}
+        </button>
+      </td>
+      <td className="py-3 px-4">
+        <p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+          {task.title}
+        </p>
+        {task.description && (
+          <p className="text-xs text-slate-400 mt-0.5 truncate max-w-50">{task.description}</p>
+        )}
+        {renderAttachment(task)}
+      </td>
+      <td className="py-3 px-4">
+        {task.assignedTo ? (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
+              {task.assignedTo.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
+                {task.assignedTo.role === 'admin' && SUPER_ADMIN_EMAILS.includes(task.assignedTo.email) && (
+                  <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase tracking-tighter leading-none">Admin</span>
+                )}
+              </div>
+              {task.assignedTo.department ? (
+                <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.assignedTo.department}</span>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">Unassigned</span>
+        )}
+      </td>
+      <td className="py-3 px-4">
+        {task.createdBy ? (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
+              {task.createdBy.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-700 truncate">{task.createdBy.name}</span>
+                {task.createdBy.role === 'admin' && SUPER_ADMIN_EMAILS.includes(task.createdBy.email) && (
+                  <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase tracking-tighter leading-none">Admin</span>
+                )}
+              </div>
+              {task.department || task.createdBy.department ? (
+                <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.department || task.createdBy.department}</span>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">-</span>
+        )}
+      </td>
+      <td className="py-3 px-4">
+        <span className={`text-sm ${
+          task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
+            ? 'text-red-500 font-medium' : 'text-slate-600'
+        }`}>
+          {task.deadline ? format(new Date(task.deadline), 'MMM dd, yyyy') : '-'}
+        </span>
+      </td>
+      <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
+      <td className="py-3 px-4 min-w-35" onClick={e => e.stopPropagation()}>
+        <CustomSelect
+          value={task.status}
+          onChange={(val) => handleStatusChange(task._id, val)}
+          options={[
+            { value: 'pending', label: 'Pending' },
+            { value: 'in-progress', label: 'In Progress' },
+            { value: 'completed', label: 'Completed' }
+          ]}
+          className={(updatingId === task._id || (!isCreator && !isAssignee && !isSuperAdmin)) ? 'opacity-50 pointer-events-none' : ''}
+        />
+      </td>
+    </tr>
+  );
+});
+
+TaskRow.displayName = 'TaskRow';
 
 const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, user }) {
   const [updatingId, setUpdatingId] = useState(null);
@@ -35,11 +141,12 @@ const TaskTable = memo(function TaskTable({ tasks, onTaskUpdate, onTaskClick, us
     );
   }, []);
 
-const API_BASE = useMemo(() => {
-  return process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-    : 'http://localhost:4000';
-}, []);
+  const API_BASE = useMemo(() => {
+    return process.env.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+      : 'http://localhost:4000';
+  }, []);
+
   const renderAttachment = useCallback((task) => {
     if (!task.attachment || task.attachment.type === 'none') return null;
 
@@ -103,84 +210,17 @@ const API_BASE = useMemo(() => {
         </thead>
         <tbody>
           {tasks.map(task => (
-            <tr key={task._id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => onTaskClick?.(task)}>
-              <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
-                <button 
-                  onClick={() => handleStatusChange(task._id, task.status === 'completed' ? 'pending' : 'completed')}
-                  disabled={updatingId === task._id}
-                >
-                  {task.status === 'completed' ? (
-                    <CheckSquare className="w-5 h-5 text-indigo-500" />
-                  ) : (
-                    <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />
-                  )}
-                </button>
-              </td>
-              <td className="py-3 px-4">
-                <p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                  {task.title}
-                </p>
-                {task.description && (
-                  <p className="text-xs text-slate-400 mt-0.5 truncate max-w-50">{task.description}</p>
-                )}
-                {renderAttachment(task)}
-              </td>
-              <td className="py-3 px-4">
-                {task.assignedTo ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {task.assignedTo.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold text-slate-700 truncate">{task.assignedTo.name}</span>
-                      {task.assignedTo.department ? (
-                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.assignedTo.department}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400">Unassigned</span>
-                )}
-              </td>
-              <td className="py-3 px-4">
-                {task.createdBy ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {task.createdBy.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold text-slate-700 truncate">{task.createdBy.name}</span>
-                      {task.department || task.createdBy.department ? (
-                        <span className="text-[10px] text-slate-400 truncate tracking-tight">{task.department || task.createdBy.department}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400">-</span>
-                )}
-              </td>
-              <td className="py-3 px-4">
-                <span className={`text-sm ${
-                  task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
-                    ? 'text-red-500 font-medium' : 'text-slate-600'
-                }`}>
-                  {task.deadline ? format(new Date(task.deadline), 'MMM dd, yyyy') : '-'}
-                </span>
-              </td>
-              <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-              <td className="py-3 px-4 min-w-35" onClick={e => e.stopPropagation()}>
-                <CustomSelect
-                  value={task.status}
-                  onChange={(val) => handleStatusChange(task._id, val)}
-                  options={[
-                    { value: 'pending', label: 'Pending' },
-                    { value: 'in-progress', label: 'In Progress' },
-                    { value: 'completed', label: 'Completed' }
-                  ]}
-                  className={updatingId === task._id ? 'opacity-50 pointer-events-none' : ''}
-                />
-              </td>
-            </tr>
+            <TaskRow 
+              key={task._id}
+              task={task}
+              onTaskUpdate={onTaskUpdate}
+              onTaskClick={onTaskClick}
+              updatingId={updatingId}
+              handleStatusChange={handleStatusChange}
+              renderAttachment={renderAttachment}
+              getPriorityBadge={getPriorityBadge}
+              currentUser={user}
+            />
           ))}
         </tbody>
       </table>

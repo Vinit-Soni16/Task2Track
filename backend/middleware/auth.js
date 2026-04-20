@@ -23,6 +23,11 @@ const auth = async (req, res, next) => {
   }
 };
 
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
 const adminOnly = (req, res, next) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Access denied. Admin only.' });
@@ -30,4 +35,11 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, adminOnly };
+const superAdminOnly = (req, res, next) => {
+  if (!SUPER_ADMIN_EMAILS.includes(req.user.email)) {
+    return res.status(403).json({ error: 'Access denied. Super Admin only.' });
+  }
+  next();
+};
+
+module.exports = { auth, adminOnly, superAdminOnly, SUPER_ADMIN_EMAILS };

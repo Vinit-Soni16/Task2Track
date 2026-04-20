@@ -6,7 +6,7 @@ const fs = require('fs');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
-const { auth, adminOnly } = require('../middleware/auth');
+const { auth, adminOnly, SUPER_ADMIN_EMAILS } = require('../middleware/auth');
 const { sendTaskAssignmentEmail, sendTaskCompletionEmail } = require('../services/emailService');
 const multer = require('multer');
 
@@ -130,13 +130,19 @@ router.get('/', auth, async (req, res) => {
 
     if (req.user.role !== 'admin') {
       query.assignedTo = req.user._id;
+    } else if (req.query.userId) {
+      // Admin can filter by userId
+      query.assignedTo = req.query.userId;
     }
+
+    const limit = req.query.limit ? parseInt(req.query.limit) : 0;
 
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email department')
       .populate('createdBy', 'name email')
       .populate('acknowledgment.taggedAdmin', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit);
 
     res.json(tasks);
   } catch (error) {
@@ -425,6 +431,23 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
     }
 
     const updates = req.body;
+    
+    // Ownership check: Only the creator can edit (except for status updates by the assignee or Super Admins)
+    const isCreator = task.createdBy.toString() === req.user._id.toString();
+    const isAssignee = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(req.user.email);
+
+    // If not creator, not Super Admin, and not a simple status update by assignee, block it
+    if (!isCreator && !isSuperAdmin) {
+      // Check if it's a status-only update from the assignee
+      const updateKeys = Object.keys(updates).filter(k => k !== 'file' && k !== 'attachmentType' && k !== 'attachmentUrl');
+      const isStatusOnly = updateKeys.length === 1 && updateKeys[0] === 'status';
+
+      if (!(isAssignee && isStatusOnly)) {
+        return res.status(403).json({ error: 'You can only edit tasks you created' });
+      }
+    }
+
     const oldStatus = task.status;
 
     // Handle Attachment updates
@@ -519,17 +542,20 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
   }
 });
 
-// DELETE /api/tasks/:id - Delete task
+// DELETE /api/tasks/:id - Delete task (DISABLED)
 router.delete('/:id', auth, async (req, res) => {
+  return res.status(403).json({ error: 'Deletion is disabled for all users' });
+  /* 
   try {
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    // Only admin or creator can delete
-    if (req.user.role !== 'admin' && task.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'Not authorized to delete this task' });
+    // Ownership check: Only the creator or Super Admin can delete
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(req.user.email);
+    if (task.createdBy.toString() !== req.user._id.toString() && !isSuperAdmin) {
+      return res.status(403).json({ error: 'You can only delete tasks you created' });
     }
 
     await Task.findByIdAndDelete(req.params.id);
@@ -546,6 +572,7 @@ router.delete('/:id', auth, async (req, res) => {
     console.error('Delete task error:', error);
     res.status(500).json({ error: 'Failed to delete task' });
   }
+  */
 });
 
 module.exports = router;
