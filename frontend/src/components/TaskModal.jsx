@@ -290,6 +290,7 @@ export default function TaskModal({ isOpen, onClose, onSubmit, users = [], task 
                 <input
                   type="file"
                   ref={fileInputRef}
+                  accept=".pdf,.docx,.xlsx,.ppt,.pptx,.doc,.xls,image/*"
                   onChange={handleFileChange}
                   className="hidden"
                 />

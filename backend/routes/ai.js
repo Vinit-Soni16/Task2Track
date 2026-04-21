@@ -11,36 +11,25 @@ const fs = require('fs');
 
 const router = express.Router();
 
-// Ensure uploads directory exists relative to project root
-const uploadDir = path.resolve(process.cwd(), 'uploads');
+// Ensure uploads/tasks directory exists relative to backend folder
+const uploadDir = path.resolve(__dirname, '../uploads/tasks');
 if (!fs.existsSync(uploadDir)) {
   try {
     fs.mkdirSync(uploadDir, { recursive: true });
-    console.log('[AI] Created uploads directory at:', uploadDir);
+    console.log('[AI] Created uploads/tasks directory at:', uploadDir);
   } catch (err) {
     console.error('[AI] Failed to create uploads directory:', err);
   }
 }
 
-// Multer storage config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Use Memory Storage for manual GridFS upload
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    console.log('[AI] Receiving file:', file.originalname, file.mimetype);
-    if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF and images are allowed'));
-    }
+    cb(null, true); // Allow all for manual GridFS
   }
 });
 
@@ -76,9 +65,12 @@ router.post('/parse-task', auth, adminOnly, upload.single('file'), async (req, r
     // Prepare attachment
     let attachment = { type: 'none', url: '', name: '' };
     if (req.file) {
+      const filename = `ai-${Date.now()}-${path.parse(req.file.originalname).name}${path.extname(req.file.originalname)}`;
+      const uploadStream = req.gridfsBucket.openUploadStream(filename, { contentType: req.file.mimetype });
+      await new Promise((res, rej) => { uploadStream.end(req.file.buffer); uploadStream.on('finish', res); uploadStream.on('error', rej); });
       attachment = {
         type: 'file',
-        url: `/uploads/${req.file.filename}`,
+        url: `/api/files/${filename}`,
         name: req.file.originalname
       };
     } else if (fileUrl) {

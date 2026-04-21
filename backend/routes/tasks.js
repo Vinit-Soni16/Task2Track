@@ -10,8 +10,8 @@ const { auth, adminOnly, SUPER_ADMIN_EMAILS } = require('../middleware/auth');
 const { sendTaskAssignmentEmail, sendTaskCompletionEmail } = require('../services/emailService');
 const multer = require('multer');
 
-// Ensure uploads/tasks directory exists
-const uploadsDir = path.join(__dirname, '../uploads/tasks');
+// Ensure uploads/tasks directory exists using absolute path
+const uploadsDir = path.resolve(__dirname, '../uploads/tasks');
 try { 
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -21,27 +21,8 @@ try {
   console.error('[Tasks Router] Error creating directory:', err);
 }
 
-// Multer Config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Ensure directory exists before saving
-    try {
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-    } catch (err) {
-      console.error('[Tasks Router] Error ensuring directory exists:', err);
-    }
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Use crypto for better randomness
-    const randomstring = crypto.randomBytes(8).toString('hex');
-    const filename = `${Date.now()}-${randomstring}${path.extname(file.originalname)}`;
-    console.log('[Tasks Router] Saving file:', filename, 'Original:', file.originalname);
-    cb(null, filename);
-  }
-});
+// Use Memory Storage for manual GridFS upload
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -75,7 +56,7 @@ router.get('/repair/broken-attachments', async (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
-    const uploadsDir = path.join(__dirname, '../uploads/tasks');
+    const uploadsDir = path.resolve(__dirname, '../uploads/tasks');
     
     // Get all actual files in uploads directory
     const actualFiles = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
@@ -376,14 +357,25 @@ router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
         name: 'External Link'
       };
     } else if (attachmentType === 'file' && req.file) {
-      // Sanitize filename to prevent path traversal
-      const safeFilename = path.basename(req.file.filename);
+      // Manual GridFS Upload
+      const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${path.extname(req.file.originalname)}`;
+      
+      const uploadStream = req.gridfsBucket.openUploadStream(filename, {
+        contentType: req.file.mimetype
+      });
+      
+      await new Promise((resolve, reject) => {
+        uploadStream.end(req.file.buffer);
+        uploadStream.on('finish', resolve);
+        uploadStream.on('error', reject);
+      });
+      
       taskData.attachment = {
         type: 'file',
-        url: `/uploads/tasks/${safeFilename}`,
+        url: `/api/files/${filename}`,
         name: req.file.originalname
       };
-      console.log('Attachment URL:', taskData.attachment.url);
+      console.log('Attachment Uploaded to GridFS:', filename);
     }
 
     if (assignedTo) {
@@ -465,10 +457,21 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         size: req.file?.size
       });
       
-      const safeFilename = path.basename(req.file.filename);
+      // Manual GridFS Upload
+      const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${path.extname(req.file.originalname)}`;
+      const uploadStream = req.gridfsBucket.openUploadStream(filename, {
+        contentType: req.file.mimetype
+      });
+      
+      await new Promise((resolve, reject) => {
+        uploadStream.end(req.file.buffer);
+        uploadStream.on('finish', resolve);
+        uploadStream.on('error', reject);
+      });
+
       task.attachment = {
         type: 'file',
-        url: `/uploads/tasks/${safeFilename}`,
+        url: `/api/files/${filename}`,
         name: req.file.originalname
       };
       console.log('Updated attachment URL:', task.attachment.url);

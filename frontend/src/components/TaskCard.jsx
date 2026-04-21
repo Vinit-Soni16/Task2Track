@@ -47,9 +47,22 @@ const TaskCard = memo(function TaskCard({ task, onTaskUpdate, onClick, user }) {
   , [task.deadline, task.status]);
 
 const API_BASE = useMemo(() => {
-  return process.env.NEXT_PUBLIC_API_URL
-    ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-    : 'http://localhost:4000';
+  // If env var exists, use it
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  }
+  
+  // Fallback for browser: If we are on a deployed site, try to guess the backend
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      // If it's on Render/Vercel, we can't easily guess the backend URL if it's different.
+      // But we can at least avoid pointing to localhost.
+      return ''; // Relative path might work if served from same domain, but here they are separate.
+    }
+  }
+
+  return 'http://localhost:4000';
 }, []);
   return (
     <div 

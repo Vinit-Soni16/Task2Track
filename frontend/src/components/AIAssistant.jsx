@@ -280,7 +280,7 @@ export default function AIAssistant({ onTaskCreated }) {
                   <div className="relative group">
                     <input 
                       type="file" 
-                      accept=".pdf,image/*" 
+                      accept=".pdf,.docx,.xlsx,.ppt,.pptx,.doc,.xls,image/*" 
                       onChange={(e) => setAttachmentFile(e.target.files[0])}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
