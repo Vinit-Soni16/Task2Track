@@ -52,7 +52,7 @@ function startDeadlineCron() {
             task.remindersSent.hours24 = true; // Mark old ones as "handled"
             task.remindersSent.hours12 = true;
             task.lastEmailSent = now;
-            await task.save();
+            await task.save({ validateBeforeSave: false });
             console.log(`[CRON] 1h reminder sent for "${task.title}"`);
           }
         }
@@ -66,7 +66,7 @@ function startDeadlineCron() {
           task.remindersSent.hours12 = true;
           task.remindersSent.hour1 = true;
           task.lastEmailSent = now;
-          await task.save();
+          await task.save({ validateBeforeSave: false });
           console.log(`[CRON] Task "${task.title}" marked as overdue (emails disabled)`);
         }
       }
