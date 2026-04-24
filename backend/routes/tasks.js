@@ -424,19 +424,23 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
 
     const updates = req.body;
     
-    // Ownership check: Only the creator can edit (except for status updates by the assignee or Super Admins)
+    // Ownership check: 
+    // 1. Creators can edit anything
+    // 2. Any Admin can edit anything
+    // 3. Super Admins can edit anything
+    // 4. Assignees can ONLY update the status
     const isCreator = task.createdBy.toString() === req.user._id.toString();
     const isAssignee = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(req.user.email);
+    const isAdmin = req.user.role === 'admin';
 
-    // If not creator, not Super Admin, and not a simple status update by assignee, block it
-    if (!isCreator && !isSuperAdmin) {
-      // Check if it's a status-only update from the assignee
-      const updateKeys = Object.keys(updates).filter(k => k !== 'file' && k !== 'attachmentType' && k !== 'attachmentUrl');
-      const isStatusOnly = updateKeys.length === 1 && updateKeys[0] === 'status';
-
-      if (!(isAssignee && isStatusOnly)) {
-        return res.status(403).json({ error: 'You can only edit tasks you created' });
+    if (!isCreator && !isSuperAdmin && !isAdmin) {
+      // Check if it's a status update from the assignee
+      if (isAssignee && updates.status) {
+        // Allow assignee to update status, but we will ignore other fields they might have sent
+        // (The loop below handles skipping non-status fields if needed, but here we just allow the request to proceed)
+      } else {
+        return res.status(403).json({ error: 'You do not have permission to edit this task' });
       }
     }
 
@@ -506,42 +510,61 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
       .populate('createdBy', 'name email')
       .populate('acknowledgment.taggedAdmin', 'name email');
 
-    // Log if status changed to completed
-    if (oldStatus !== 'completed' && task.status === 'completed') {
-      await ActivityLog.create({
-        user: req.user._id,
-        action: 'task_completed',
-        taskId: task._id,
-        details: `Completed task: ${task.title}`
-      });
-    } else {
-      await ActivityLog.create({
-        user: req.user._id,
-        action: 'task_updated',
-        taskId: task._id,
-        details: `Updated task: ${task.title}`
-      });
+    if (!populatedTask) {
+      return res.status(404).json({ error: 'Task found and updated, but failed to retrieve for notification.' });
     }
 
-    // Send emails based on updates
-    if (populatedTask.assignedTo && populatedTask.assignedTo.email) {
-      // If assignment changed
-      if (updates.assignedTo && updates.assignedTo.toString() !== task.assignedTo?.toString()) {
-        sendTaskAssignmentEmail(populatedTask, populatedTask.assignedTo);
+    // Log activity (wrapped in try-catch to prevent crashing the response)
+    try {
+      if (oldStatus !== 'completed' && task.status === 'completed') {
+        await ActivityLog.create({
+          user: req.user._id,
+          action: 'task_completed',
+          taskId: task._id,
+          details: `Completed task: ${task.title}`
+        });
+      } else {
+        await ActivityLog.create({
+          user: req.user._id,
+          action: 'task_updated',
+          taskId: task._id,
+          details: `Updated task: ${task.title}`
+        });
       }
+    } catch (logError) {
+      console.error('[ActivityLog Error]', logError);
+    }
 
-      // If status changed to completed, notify creator
-      if (oldStatus !== 'completed' && populatedTask.status === 'completed') {
-        if (populatedTask.createdBy && populatedTask.createdBy.email) {
-          sendTaskCompletionEmail(populatedTask, populatedTask.createdBy);
+    // Send emails based on updates (wrapped in try-catch)
+    try {
+      if (populatedTask.assignedTo && populatedTask.assignedTo.email) {
+        // If assignment changed
+        const oldAssignedId = task.assignedTo?.toString();
+        const newAssignedId = updates.assignedTo?.toString();
+        
+        if (newAssignedId && newAssignedId !== oldAssignedId) {
+          sendTaskAssignmentEmail(populatedTask, populatedTask.assignedTo);
+        }
+
+        // If status changed to completed, notify creator
+        if (oldStatus !== 'completed' && populatedTask.status === 'completed') {
+          if (populatedTask.createdBy && populatedTask.createdBy.email) {
+            sendTaskCompletionEmail(populatedTask, populatedTask.createdBy);
+          }
         }
       }
+    } catch (emailError) {
+      console.error('[Email Error]', emailError);
     }
 
     res.json(populatedTask);
   } catch (error) {
     console.error('Update task error:', error);
-    res.status(500).json({ error: 'Failed to update task' });
+    res.status(500).json({ 
+      error: 'Failed to update task', 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
   }
 });
 

@@ -68,7 +68,7 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
   const completionRate = stats?.completionRate || 0;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-60 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-60 p-0 sm:p-4">
       <div 
         className="bg-slate-50 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-3xl shadow-2xl animate-slideUp max-h-[92vh] overflow-y-auto" 
         onClick={e => e.stopPropagation()}

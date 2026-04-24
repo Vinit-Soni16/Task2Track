@@ -22,7 +22,7 @@ export default function TaskViewModal({ isOpen, onClose, onEdit, task }) {
   const isAdmin = currentUser?.role === 'admin';
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6">
       <div 
         className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[90vh]"
         onClick={e => e.stopPropagation()}
