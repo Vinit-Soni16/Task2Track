@@ -82,12 +82,8 @@ export default function MemberDashboardModal({ isOpen, onClose, member }) {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{member.name}&apos;s Dashboard</h2>
-                {member.role === 'admin' && (
-                  SUPER_ADMIN_EMAILS.includes(member.email) ? (
-                    <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase shrink-0">Admin</span>
-                  ) : (
-                    <span className="px-1 py-0.5 bg-amber-100 text-amber-600 text-[8px] font-bold rounded uppercase shrink-0">Manager</span>
-                  )
+                {member.role === 'admin' && SUPER_ADMIN_EMAILS.includes(member.email) && (
+                  <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase shrink-0">Admin</span>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">

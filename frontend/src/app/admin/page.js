@@ -34,12 +34,8 @@ const MemberRow = memo(({ member, router, onSelect, isSuperAdmin, onRoleChange }
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-medium text-slate-800 truncate">{member.name}</p>
-              {member.role === 'admin' && (
-                isMemberSuperAdmin ? (
-                  <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase">Admin</span>
-                ) : (
-                  <span className="px-1 py-0.5 bg-amber-100 text-amber-600 text-[8px] font-bold rounded uppercase">Manager</span>
-                )
+              {member.role === 'admin' && isMemberSuperAdmin && (
+                <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase">Admin</span>
               )}
             </div>
             <p className="text-xs text-slate-400 truncate">{member.email}</p>
@@ -143,12 +139,8 @@ const MemberCard = memo(({ member, router, onSelect, isSuperAdmin, onRoleChange 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-medium text-slate-800 truncate">{member.name}</p>
-              {member.role === 'admin' && (
-                isMemberSuperAdmin ? (
-                  <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase">Admin</span>
-                ) : (
-                  <span className="px-1 py-0.5 bg-amber-100 text-amber-600 text-[8px] font-bold rounded uppercase">Manager</span>
-                )
+              {member.role === 'admin' && isMemberSuperAdmin && (
+                <span className="px-1 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-bold rounded uppercase">Admin</span>
               )}
             </div>
             <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
@@ -222,6 +214,7 @@ export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [analytics, setAnalytics] = useState([]);
+  const [overallStats, setOverallStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
@@ -243,8 +236,12 @@ export default function AdminPage() {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await api.get('/users/analytics');
-      setAnalytics(res.data);
+      const [analyticsRes, statsRes] = await Promise.all([
+        api.get('/users/analytics'),
+        api.get('/tasks/stats')
+      ]);
+      setAnalytics(analyticsRes.data);
+      setOverallStats(statsRes.data);
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
     }
@@ -272,13 +269,27 @@ export default function AdminPage() {
   };
 
   const teamMembers = useMemo(() => analytics.length, [analytics]);
-  const totalTasks = useMemo(() => analytics.reduce((acc, curr) => acc + (curr.totalTasks || 0), 0), [analytics]);
+  const totalTasks = useMemo(() => {
+    if (overallStats && overallStats.total !== undefined) {
+      return overallStats.total;
+    }
+    return analytics.reduce((acc, curr) => acc + (curr.totalTasks || 0), 0);
+  }, [analytics, overallStats]);
   
-  const stats = useMemo(() => ({
-    completed: analytics.reduce((acc, curr) => acc + (curr.completed || 0), 0),
-    inProgress: analytics.reduce((acc, curr) => acc + (curr.inProgress || 0), 0),
-    overdue: analytics.reduce((acc, curr) => acc + (curr.overdue || 0), 0),
-  }), [analytics]);
+  const stats = useMemo(() => {
+    if (overallStats) {
+      return {
+        completed: overallStats.completed || 0,
+        inProgress: overallStats.inProgress || 0,
+        overdue: overallStats.overdue || 0,
+      };
+    }
+    return {
+      completed: analytics.reduce((acc, curr) => acc + (curr.completed || 0), 0),
+      inProgress: analytics.reduce((acc, curr) => acc + (curr.inProgress || 0), 0),
+      overdue: analytics.reduce((acc, curr) => acc + (curr.overdue || 0), 0),
+    };
+  }, [analytics, overallStats]);
 
   const topPerformer = useMemo(() => {
     if (analytics.length === 0) return null;
@@ -300,7 +311,7 @@ export default function AdminPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
-              {isSuperAdmin ? 'Admin Dashboard' : 'Manager Dashboard'}
+              {isSuperAdmin ? 'Admin Dashboard' : 'Dashboard'}
             </h1>
             <p className="text-slate-500 mt-1">Manage your team and track performance</p>
           </div>

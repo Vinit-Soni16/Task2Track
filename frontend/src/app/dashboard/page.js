@@ -188,7 +188,7 @@ export default function DashboardPage() {
       .filter(Boolean);
 
     if (user.role === 'admin') {
-      return SUPER_ADMIN_EMAILS.includes(user.email) ? 'Admin Dashboard' : 'Manager Dashboard';
+      return SUPER_ADMIN_EMAILS.includes(user.email) ? 'Admin Dashboard' : 'Dashboard';
     }
     return 'Member Dashboard';
   }, [user]);
