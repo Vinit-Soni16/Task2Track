@@ -12,7 +12,7 @@ const multer = require('multer');
 
 // Ensure uploads/tasks directory exists using absolute path
 const uploadsDir = path.resolve(__dirname, '../uploads/tasks');
-try { 
+try {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
     console.log('[Tasks Router] Created uploads/tasks directory at:', uploadsDir);
@@ -57,24 +57,24 @@ router.get('/repair/broken-attachments', async (req, res) => {
     const fs = require('fs');
     const path = require('path');
     const uploadsDir = path.resolve(__dirname, '../uploads/tasks');
-    
+
     // Get all actual files in uploads directory
     const actualFiles = fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
     console.log('Actual files in uploads/tasks:', actualFiles);
-    
+
     // Find all tasks with file attachments
     const tasksWithAttachments = await Task.find({
       'attachment.type': 'file',
       'attachment.url': { $regex: /^\/uploads\/tasks\// }
     });
-    
+
     const brokenTasks = [];
     const fixedTasks = [];
-    
+
     for (const task of tasksWithAttachments) {
       const fileName = task.attachment.url.replace('/uploads/tasks/', '');
       const fileExists = actualFiles.includes(fileName);
-      
+
       if (!fileExists) {
         console.warn(`[BROKEN ATTACHMENT] Task ${task._id}: ${fileName} not found`);
         brokenTasks.push({
@@ -83,14 +83,14 @@ router.get('/repair/broken-attachments', async (req, res) => {
           storedName: fileName,
           url: task.attachment.url
         });
-        
+
         // Clear the broken attachment
         task.attachment = { type: 'none' };
         await task.save();
         fixedTasks.push(task._id);
       }
     }
-    
+
     res.json({
       success: true,
       message: `Found ${brokenTasks.length} broken attachments and cleared ${fixedTasks.length}`,
@@ -143,8 +143,8 @@ router.get('/stats', auth, async (req, res) => {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     // Initial match query based on role
-    const matchQuery = userRole !== 'admin' 
-      ? { assignedTo: userId } 
+    const matchQuery = userRole !== 'admin'
+      ? { assignedTo: userId }
       : {};
 
     const stats = await Task.aggregate([
@@ -163,18 +163,18 @@ router.get('/stats', auth, async (req, res) => {
                 highPriority: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } },
                 mediumPriority: { $sum: { $cond: [{ $eq: ['$priority', 'medium'] }, 1, 0] } },
                 lowPriority: { $sum: { $cond: [{ $eq: ['$priority', 'low'] }, 1, 0] } },
-                overdue: { 
-                  $sum: { 
+                overdue: {
+                  $sum: {
                     $cond: [
-                      { 
+                      {
                         $and: [
                           { $ne: ['$status', 'completed'] },
                           { $lt: ['$deadline', now] },
                           { $ne: ['$deadline', null] }
-                        ] 
-                      }, 1, 0 
-                    ] 
-                  } 
+                        ]
+                      }, 1, 0
+                    ]
+                  }
                 }
               }
             }
@@ -212,7 +212,7 @@ router.get('/stats', auth, async (req, res) => {
       date.setDate(date.getDate() - i);
       const dateString = date.toISOString().split('T')[0];
       const dayData = stats[0].weekly.find(w => w._id === dateString);
-      
+
       weeklyProgress.push({
         day: weekDays[date.getDay()],
         completed: dayData ? dayData.count : 0
@@ -255,18 +255,18 @@ router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
                   highPriority: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } },
                   mediumPriority: { $sum: { $cond: [{ $eq: ['$priority', 'medium'] }, 1, 0] } },
                   lowPriority: { $sum: { $cond: [{ $eq: ['$priority', 'low'] }, 1, 0] } },
-                  overdue: { 
-                    $sum: { 
+                  overdue: {
+                    $sum: {
                       $cond: [
-                        { 
+                        {
                           $and: [
                             { $ne: ['$status', 'completed'] },
                             { $lt: ['$deadline', now] },
                             { $ne: ['$deadline', null] }
-                          ] 
-                        }, 1, 0 
-                      ] 
-                    } 
+                          ]
+                        }, 1, 0
+                      ]
+                    }
                   }
                 }
               }
@@ -305,7 +305,7 @@ router.get('/stats/:userId', auth, adminOnly, async (req, res) => {
       date.setDate(date.getDate() - i);
       const dateString = date.toISOString().split('T')[0];
       const dayData = stats[0]?.weekly.find(w => w._id === dateString);
-      
+
       weeklyProgress.push({
         day: weekDays[date.getDay()],
         completed: dayData ? dayData.count : 0
@@ -359,17 +359,17 @@ router.post('/', auth, adminOnly, upload.single('file'), async (req, res) => {
     } else if (attachmentType === 'file' && req.file) {
       // Manual GridFS Upload
       const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${path.extname(req.file.originalname)}`;
-      
+
       const uploadStream = req.gridfsBucket.openUploadStream(filename, {
         contentType: req.file.mimetype
       });
-      
+
       await new Promise((resolve, reject) => {
         uploadStream.end(req.file.buffer);
         uploadStream.on('finish', resolve);
         uploadStream.on('error', reject);
       });
-      
+
       taskData.attachment = {
         type: 'file',
         url: `/api/files/${filename}`,
@@ -423,7 +423,7 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
     }
 
     const updates = req.body;
-    
+
     // Ownership check: 
     // 1. Creators can edit anything
     // 2. Any Admin can edit anything
@@ -460,13 +460,13 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         filename: req.file?.filename,
         size: req.file?.size
       });
-      
+
       // Manual GridFS Upload
       const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${path.extname(req.file.originalname)}`;
       const uploadStream = req.gridfsBucket.openUploadStream(filename, {
         contentType: req.file.mimetype
       });
-      
+
       await new Promise((resolve, reject) => {
         uploadStream.end(req.file.buffer);
         uploadStream.on('finish', resolve);
@@ -541,7 +541,7 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         // If assignment changed
         const oldAssignedId = task.assignedTo?.toString();
         const newAssignedId = updates.assignedTo?.toString();
-        
+
         if (newAssignedId && newAssignedId !== oldAssignedId) {
           sendTaskAssignmentEmail(populatedTask, populatedTask.assignedTo);
         }
@@ -560,10 +560,10 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
     res.json(populatedTask);
   } catch (error) {
     console.error('Update task error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update task', 
+    res.status(500).json({
+      error: 'Failed to update task',
       details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

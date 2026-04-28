@@ -11,7 +11,7 @@ const router = express.Router();
 router.put('/:id/role', auth, superAdminOnly, async (req, res) => {
   try {
     const { role } = req.body;
-    
+
     if (!['admin', 'member'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
@@ -26,7 +26,7 @@ router.put('/:id/role', auth, superAdminOnly, async (req, res) => {
       .split(',')
       .map(e => e.trim().toLowerCase())
       .filter(Boolean);
-      
+
     if (SUPER_ADMIN_EMAILS.includes(user.email)) {
       return res.status(403).json({ error: 'Cannot change role of a Super Admin' });
     }
@@ -100,21 +100,21 @@ router.put('/profile', auth, async (req, res) => {
 router.get('/analytics', auth, adminOnly, async (req, res) => {
   try {
     const users = await User.find().select('-password');
-    
+
     // For admin analytics, we want to see all tasks to get a complete team overview
     const tasks = await Task.find().populate('assignedTo', 'name email');
 
     const analytics = users.map(user => {
-      const userTasks = tasks.filter(t => 
+      const userTasks = tasks.filter(t =>
         t.assignedTo && t.assignedTo._id.toString() === user._id.toString()
       );
-      
+
       const totalTasks = userTasks.length;
       const completed = userTasks.filter(t => t.status === 'completed').length;
       const pending = userTasks.filter(t => t.status === 'pending').length;
       const inProgress = userTasks.filter(t => t.status === 'in-progress').length;
       const now = new Date();
-      const overdue = userTasks.filter(t => 
+      const overdue = userTasks.filter(t =>
         t.status !== 'completed' && t.deadline && new Date(t.deadline) < now
       ).length;
       const completionRate = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;

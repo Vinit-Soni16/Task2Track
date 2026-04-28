@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
     }
   }
 
- 
+
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   } else {
